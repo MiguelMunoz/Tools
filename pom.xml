@@ -53,7 +53,7 @@
 	        <!--See https://stackoverflow.com/questions/49398894/unable-to-compile-simple-java-10-project-with-maven-->
 	        <version>3.8.0</version>
 	        <configuration>
-		        <release>10</release>
+		        <release>9</release>
 		        <!--<source>10</source>-->
 		        <!--<target>10</target>-->
 	        </configuration>
