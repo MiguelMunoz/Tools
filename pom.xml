@@ -7,7 +7,7 @@
   <groupId>com.neptunedreams</groupId>
   <artifactId>tools</artifactId>
   <version>1.0-SNAPSHOT</version>
-  <packaging>jar</packaging>
+  <packaging>pom</packaging>
 
   <name>tools</name>
   <!-- FIXME change it to the project's website -->
@@ -15,8 +15,8 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>1.10</maven.compiler.source>
-    <maven.compiler.target>1.10</maven.compiler.target>
+    <maven.compiler.source>10</maven.compiler.source>
+    <maven.compiler.target>10</maven.compiler.target>
   </properties>
 
   <dependencies>
@@ -53,7 +53,7 @@
 	        <!--See https://stackoverflow.com/questions/49398894/unable-to-compile-simple-java-10-project-with-maven-->
 	        <version>3.8.0</version>
 	        <configuration>
-		        <release>9</release>
+		        <release>10</release>
 		        <!--<source>10</source>-->
 		        <!--<target>10</target>-->
 	        </configuration>
@@ -86,27 +86,7 @@
       </plugins>
     </pluginManagement>
 	  
-	  
-    <plugins>
-	    <!--This creates an executable jar file.-->
-	    <plugin>
-		    <groupId>org.apache.maven.plugins</groupId>
-		    <artifactId>maven-jar-plugin</artifactId>
-		    <version>2.6</version>
-		    <configuration>
-			    <!--<detail>-->
-			    <!--<derby.system.home>${user.home}/.skeleton</derby.system.home>-->
-			    <!--</detail>-->
-			    <archive>
-				    <manifest>
-					    <mainClass>com.neptunedreams.gui.link.LinkBuilder</mainClass>
-				    </manifest>
-			    </archive>
-			    <finalName>LinkBuilder</finalName>
-			    <outputDirectory>${user.home}/Documents/NewHome/Home7/jars</outputDirectory>
-		    </configuration>
-	    </plugin>
-
+	  <plugins>
 	    <!--This is supposed to allow you to build using Java 10 or 11. Sometimes it doesn't work. Sometimes it's not 
 	    needed. It's behavior appears to be non-deterministic.-->
 
@@ -130,31 +110,32 @@
 		    <!--&lt;!&ndash;</dependencies>&ndash;&gt;-->
 	    <!--</plugin>-->
 
-	    <!--This copies the final jar file to the right directory.-->
-	    <plugin>
-		    <artifactId>maven-resources-plugin</artifactId>
-		    <version>3.0.2</version>
-		    <executions>
-			    <execution>
-				    <id>copy-resources</id>
-				    <!-- here the phase you need -->
-				    <phase>validate</phase>
-				    <goals>
-					    <goal>copy-resources</goal>
-				    </goals>
-				    <configuration>
-					    <!--<outputDirectory>${basedir}/target/extra-resources</outputDirectory>-->
-					    <outputDirectory>${user.home}/Documents/NewHome/Home7/jars</outputDirectory>
-					    <resources>
-						    <resource>
-							    <directory>target</directory>
-							    <filtering>true</filtering>
-						    </resource>
-					    </resources>
-				    </configuration>
-			    </execution>
-		    </executions>
-	    </plugin>
+	    <!--This is supposed to copy the final jar file to the right directory.-->
+		  <!--I think it's really mean for copying resources before the build, which would explain why it doesn't work.-->
+	    <!--<plugin>-->
+		    <!--<artifactId>maven-resources-plugin</artifactId>-->
+		    <!--<version>3.0.2</version>-->
+		    <!--<executions>-->
+			    <!--<execution>-->
+				    <!--<id>copy-resources</id>-->
+				    <!--&lt;!&ndash; here the phase you need &ndash;&gt;-->
+				    <!--<phase>validate</phase>-->
+				    <!--<goals>-->
+					    <!--<goal>copy-resources</goal>-->
+				    <!--</goals>-->
+				    <!--<configuration>-->
+					    <!--&lt;!&ndash;<outputDirectory>${basedir}/target/extra-resources</outputDirectory>&ndash;&gt;-->
+					    <!--<outputDirectory>${user.home}/Documents/NewHome/Home7/jars</outputDirectory>-->
+					    <!--<resources>-->
+						    <!--<resource>-->
+							    <!--<directory>target</directory>-->
+							    <!--<filtering>true</filtering>-->
+						    <!--</resource>-->
+					    <!--</resources>-->
+				    <!--</configuration>-->
+			    <!--</execution>-->
+		    <!--</executions>-->
+	    <!--</plugin>-->
     </plugins>
   </build>
 </project>

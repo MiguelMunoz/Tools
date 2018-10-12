@@ -173,7 +173,6 @@ public final class LinkBuilder extends JPanel {
     };
 //    final int shortcutMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx(); // Use this one for java 10+
     final int shortcutMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask(); // ...Ex();
-    //noinspection MagicConstant
     linkAction.putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke('L', shortcutMask));
     linkAction.putValue(Action.NAME, CREATE_LINK_AND_COPY);
     linkAction.setEnabled(false);
