@@ -7,7 +7,6 @@ import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import javax.swing.JComponent;
 
 /**
  * <br>Created by IntelliJ IDEA.
@@ -25,15 +24,17 @@ import javax.swing.JComponent;
  *
  * @author Miguel Mu\u00f1oz
  */
+@SuppressWarnings("WeakerAccess")
 public class ScalingImage extends Canvas {
 	private Image image;
 	public ScalingImage(Image image) {
+		super();
 		this.image = image;
-		
+
 		addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentResized(final ComponentEvent e) {
-				((JComponent)getParent()).revalidate();
+				getParent().revalidate();
 			}
 		});
 	}
@@ -66,8 +67,8 @@ public class ScalingImage extends Canvas {
 			useWidth = false;
 			scale = heightScale;
 		}
-		int scaledWidth = (int) Math.round(scale*imageWidth);
-		int scaledHeight = (int) Math.round(scale*imageHeight);
+		int scaledWidth = (int)Math.round(scale*imageWidth);
+		int scaledHeight = (int)Math.round(scale*imageHeight);
 
 		Graphics2D g2 = (Graphics2D) g;
 		setRenderHints(g2);

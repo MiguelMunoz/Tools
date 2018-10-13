@@ -3,20 +3,16 @@ package com.neptunedreams.camera;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Dialog;
 import java.awt.FileDialog;
 import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.awt.image.FilteredImageSource;
 import java.awt.image.ImageFilter;
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.lang.management.LockInfo;
 import java.lang.management.ManagementFactory;
@@ -46,7 +42,8 @@ import javax.swing.filechooser.FileNameExtensionFilter;
  *
  * @author Miguel Mu\u00f1oz
  */
-public class CameraFilter6 extends JPanel implements FilterDestination {
+@SuppressWarnings("HardCodedStringLiteral")
+public final class CameraFilter6 extends JPanel implements FilterDestination {
 	private static final String LOAD_DIR = "loadDir";
 	private static final String LOAD_DIR_NATIVE = "loadDirNative";
 	private static final String PREVIOUS_FILE = "previousFile";
@@ -61,7 +58,7 @@ public class CameraFilter6 extends JPanel implements FilterDestination {
 //	private Image grayImage = null;
 	private static JFrame mainFrame=null;
 	private BufferedImage loadedImage=null;
-	private final ScalingImage scalingImage=new ScalingImage(null);
+	private final ScalingImage scalingImage=new ScalingImage(new BufferedImage(0, 0, BufferedImage.TYPE_INT_RGB));
 
 	public static void main(String[] args) {
 		mainFrame = new JFrame("Camera Filter");
@@ -82,30 +79,15 @@ public class CameraFilter6 extends JPanel implements FilterDestination {
 
 		JButton openButton = new JButton("Open");
 		toolBar.add(openButton);
-		openButton.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				doOpen();
-			}
-		});
+		openButton.addActionListener(e -> doOpen());
 		
 		JButton nativeOpenButton = new JButton("Native Open");
 		toolBar.add(nativeOpenButton);
-		nativeOpenButton.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(final ActionEvent e) {
-				doNativeOpen();
-			}
-		});
+		nativeOpenButton.addActionListener(e -> doNativeOpen());
 		
 		JButton saveButton = new JButton("Save");
 		toolBar.add(saveButton);
-		saveButton.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				doSave();
-			}
-		});
+		saveButton.addActionListener(e -> doSave());
 
 		JButton prevFileButton = new JButton("Previous File");
 		toolBar.add(prevFileButton);
@@ -114,9 +96,10 @@ public class CameraFilter6 extends JPanel implements FilterDestination {
 		preferences.addPreferenceChangeListener(evt -> {
 			// I really should change the preference back to empty if the file fails to load. 
 			// For now, I'm not going to bother.
+			//noinspection EqualsReplaceableByObjectsCall
 			if (evt.getKey().equals(PREVIOUS_FILE)) {
 				String newValue = evt.getNewValue();
-				prevFileButton.setEnabled (newValue != null && !newValue.isEmpty());
+				prevFileButton.setEnabled ((newValue != null) && !newValue.isEmpty());
 			}
 		});
 		
@@ -124,6 +107,7 @@ public class CameraFilter6 extends JPanel implements FilterDestination {
 		toolBar.add(traceButton);
 		traceButton.addActionListener(evt-> doTrace());
 
+		//noinspection StringConcatenation
 		JLabel processorLabel = new JLabel(" Processors: " + Runtime.getRuntime().availableProcessors());
 		toolBar.add(processorLabel);
 		
@@ -131,21 +115,14 @@ public class CameraFilter6 extends JPanel implements FilterDestination {
 		prevFileButton.setEnabled(!prevFile.isEmpty());
 
 		add(createPhotoView(), BorderLayout.CENTER);
-		final FilterChooser filterChooser = new FilterChooser();
-		filterChooser.addFilterListener(new FilterChooser.FilterListener() {
-			@Override
-			public void filter(final Color color) {
-				filterChooser.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-				doFilter(color);
-				filterChooser.setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
-			}
-		});
+		final FilterChooser filterChooser = new FilterChooser(this);
 
 		JDialog filterFrame = new JDialog(mainFrame, Dialog.ModalityType.MODELESS);
 
 		filterFrame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 		filterFrame.setResizable(false);
-		filterFrame.add(filterChooser);
+		filterFrame.add(filterChooser, BorderLayout.CENTER);
+		filterFrame.add(makeExtraFilterPanel(this), BorderLayout.PAGE_END);
 		filterFrame.setFocusableWindowState(false);
 		
 		filterFrame.pack();
@@ -154,20 +131,18 @@ public class CameraFilter6 extends JPanel implements FilterDestination {
 		ThreadMXBean bean = ManagementFactory.getThreadMXBean();
 		if (bean.isThreadContentionMonitoringSupported()) {
 			bean.setThreadContentionMonitoringEnabled(true);
-			Runnable runner = new Runnable() {
-				@Override
-				public void run() {
-					while (true) {
-						long[] deadlocked = bean.findDeadlockedThreads();
-						if (deadlocked != null) {
-							logDeadLocked(bean, deadlocked);
-						}
-						try {
-							Thread.sleep(30000);
-						} catch (InterruptedException pE) {
-							Thread.currentThread().interrupt();
-							break;
-						}
+			Runnable runner = () -> {
+				while (true) {
+					long[] deadlocked = bean.findDeadlockedThreads();
+					if (deadlocked != null) {
+						logDeadLocked(bean, deadlocked);
+					}
+					try {
+						//noinspection MagicNumber
+						Thread.sleep(30000);
+					} catch (InterruptedException pE) {
+						Thread.currentThread().interrupt();
+						break;
 					}
 				}
 			};
@@ -176,18 +151,17 @@ public class CameraFilter6 extends JPanel implements FilterDestination {
 			monitorThread.start();
 		}
 	}
-	
-//	private JPanel makeExtraFilterPanel() {
-//		JPanel extraFilterPanel = new JPanel(new GridLayout(0, 1));
-//		JButton button = new JButton("Desaturate");
-//		button.addActionListener(new ActionListener() {
-//			@Override
-//			public void actionPerformed(final ActionEvent e) {
-//				
-//			}
-//		});
-//	}
 
+	private JPanel makeExtraFilterPanel(final FilterDestination filterDestination) {
+		ImageFilter filter = new DeSaturationFilter();
+		JPanel extraFilterPanel = new JPanel(new GridLayout(0, 1));
+		JButton button = new JButton("Desaturate");
+		button.addActionListener(e -> filterDestination.applyFilter(filter));
+		extraFilterPanel.add(button);
+		return extraFilterPanel;
+	}
+
+	@SuppressWarnings("UseOfSystemOutOrSystemErr")
 	private static void logDeadLocked(ThreadMXBean bean, long[] ids) {
 		for (long id: ids) {
 			ThreadInfo info = bean.getThreadInfo(id);
@@ -206,13 +180,13 @@ public class CameraFilter6 extends JPanel implements FilterDestination {
 		// todo: write me:
 	}
 
-	private void doFilter(final Color color) {
-//		SwingWorker<>
-			ImageFilter filter = new RgbToGrayImageFilter(color);
-			applyFilter(filter);
-
+	@Override
+	public void applyColor(final Color color) {
+		ImageFilter filter = new RgbToGrayImageFilter(color);
+		applyFilter(filter);
 	}
 
+	@Override
 	public void applyFilter(final ImageFilter filter) {
 		if (loadedImage != null) {
 			// For single-threaded filtering, use this line:
@@ -223,16 +197,16 @@ public class CameraFilter6 extends JPanel implements FilterDestination {
 		imageSource.addConsumer(filter);
 
 		Image image = grayView.createImage(imageSource);
+//		ImageIcon iconImage = new ImageIcon(image);
+//		JLabel label = new JLabel(iconImage);
+//		JOptionPane.showMessageDialog(this, label);
 		scalingImage.setImage(image);
+		scalingImage.repaint();
+		grayView.repaint();
+//		grayView.setIgnoreRepaint();
 		Toolkit.getDefaultToolkit().beep();
 		} else {
 			JOptionPane.showMessageDialog(this, "No image open.", "Error", JOptionPane.ERROR_MESSAGE);
-		}
-	}
-
-	void doNonColorFilter(AbstractFilter filter) {
-		if (loadedImage != null) {
-			applyFilter(filter);
 		}
 	}
 
@@ -246,8 +220,8 @@ public class CameraFilter6 extends JPanel implements FilterDestination {
 			String name = saveFile.getName();
 			String extension = getExtension(name);
 			if (extension.isEmpty()) {
-				name = name + fileExtension;
-				fileChooser.setName(name);
+				saveFile = new File(saveFile.getParent(), saveFile.getName() + fileExtension);
+				fileChooser.setSelectedFile(saveFile);
 			}
 			try {
 				Image image = scalingImage.getImage();
@@ -261,9 +235,11 @@ public class CameraFilter6 extends JPanel implements FilterDestination {
 				g.drawImage(grayImage, 0, 0, this);
 				ImageIO.write(grayImage, formatName, saveFile);
 			} catch (IOException e) {
+				//noinspection StringConcatenation
 				JOptionPane.showMessageDialog(this, e.getMessage(), "Error: " + e.getClass().getSimpleName(), JOptionPane.ERROR_MESSAGE);
 			} catch (Throwable t) {
 				t.printStackTrace();
+				//noinspection StringConcatenation
 				JOptionPane.showMessageDialog(this, t.getMessage(), "Error: " + t.getClass().getSimpleName(), JOptionPane.ERROR_MESSAGE);
 			}
 		}
@@ -304,17 +280,14 @@ public class CameraFilter6 extends JPanel implements FilterDestination {
 			//noinspection StringConcatenationInLoop
 			extensions[index++] = DOT + ext;
 		}
-		fileChooser.setFilenameFilter(new FilenameFilter() {
-			@Override
-			public boolean accept(final File dir, final String name) {
-				String lowName = name.toLowerCase();
-				for (String end: extensions) {
-					if (lowName.endsWith(end)) {
-						return true;
-					}
+		fileChooser.setFilenameFilter((dir, name) -> {
+			String lowName = name.toLowerCase();
+			for (String end: extensions) {
+				if (lowName.endsWith(end)) {
+					return true;
 				}
-				return false;
 			}
+			return false;
 		});
 		fileChooser.setVisible(true);
 		String selectedFileName = fileChooser.getFile();
@@ -333,9 +306,11 @@ public class CameraFilter6 extends JPanel implements FilterDestination {
 			openFile(new File(path));
 		}
 	}
-	
+
 	private String getExtension(String path) {
-		return path.substring(path.lastIndexOf('.'));
+		//noinspection MagicCharacter
+		final int dotSpot = path.lastIndexOf('.');
+		return (dotSpot < 0) ? "" : path.substring(dotSpot);
 	}
 
 	private void openFile(final File selectedFile) {
@@ -349,10 +324,12 @@ public class CameraFilter6 extends JPanel implements FilterDestination {
 			colorView.revalidate();
 			preferences.put(PREVIOUS_FILE, selectedFile.getAbsolutePath());
 		} catch (IOException e) {
+			//noinspection StringConcatenation
 			JOptionPane.showMessageDialog(this, e.getMessage() + ": " + selectedFile.getAbsolutePath(), "Error", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 
+	@SuppressWarnings("UseOfSystemOutOrSystemErr")
 	private void doTrace() {
 		int count = Thread.activeCount();
 		Thread[] all = new Thread[count * 2];

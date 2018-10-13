@@ -1,4 +1,6 @@
 package com.neptunedreams.camera;
+import java.awt.Color;
+import java.awt.image.ImageFilter;
 
 /**
  * <p>Created by IntelliJ IDEA.
@@ -7,9 +9,8 @@ package com.neptunedreams.camera;
  *
  * @author Miguel Mu\u00f1oz
  */
-
-import java.awt.image.ImageFilter;
-
 interface FilterDestination {
 	void applyFilter(ImageFilter filter);
+	
+	void applyColor(Color color);
 }

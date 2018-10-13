@@ -9,21 +9,30 @@ import java.awt.Color;
  *
  * @author Miguel Mu\u00f1oz
  */
-public class NtscFloatFilter extends AbstractFilter {
+@SuppressWarnings("unused")
+public final class NtscFloatFilter extends AbstractImageFilter {
 	private static final int BYTE_MAX = 256;
 	private static final double CROSSOVER = 0.04045;
 
 	private final Color color;
 	private final double loss;
 	private static final double root = 1.0 / 2.4;
-	private static final double reverseCrossover = Math.pow((CROSSOVER + 0.055) / 1.055, 2.4);
-	private static final double lumRed = 0.299 * 255.0;
-	private static final double lumGreen = 0.587 * 255.0;
-	private static final double lumBlue = 0.114 * 255.0;
+	private static final double reverseCrossover = StrictMath.pow((CROSSOVER + 0.055) / 1.055, 2.4);
+	private static final double MAX = 255.0;
+	private static final double lumRed = 0.299 * MAX;
+	private static final double lumGreen = 0.587 * MAX;
+	private static final double lumBlue = 0.114 * MAX;
 
 	public NtscFloatFilter(final Color color) {
+		super();
 		this.color = color;
 		loss = gray(color.getRed(), color.getGreen(), color.getBlue());
+	}
+	
+	private NtscFloatFilter(NtscFloatFilter other) {
+		super();
+		color = other.color;
+		loss = other.loss;
 	}
 
 	@Override
@@ -48,10 +57,10 @@ public class NtscFloatFilter extends AbstractFilter {
 	}
 
 	private double gray(final double red, final double grn, final double blu) {
-		return ((red * lumRed) + (grn * lumGreen) + (blu * lumBlue)) / 255.0;
+		return ((red * lumRed) + (grn * lumGreen) + (blu * lumBlue)) / MAX;
 	}
 
-	protected static final double[] dblGammaToLinear = createGammaToLinear();
+	private static final double[] dblGammaToLinear = createGammaToLinear();
 
 	private static double[] createGammaToLinear() {
 		double [] linear = new double[BYTE_MAX];
@@ -61,32 +70,39 @@ public class NtscFloatFilter extends AbstractFilter {
 		return linear;
 	}
 
+	@SuppressWarnings("MagicNumber")
 	private static double dblGammaToLinear(final int ii) {
-		double normal = ii / 255.0;
+		double normal = ii / MAX;
 		if (normal < CROSSOVER) {
-			return (normal * 255.0) / 12.92;
+			return (normal * MAX) / 12.92;
 		} else {
-			return 255.0 * Math.pow((normal + 0.055) / 1.055, 2.4);
+			return MAX * StrictMath.pow((normal + 0.055) / 1.055, 2.4);
 		}
 	}
 
-	protected static final double[] dblLinearToGamma = createLinearToGamma();
+	private static final double[] dblLinearToGamma = createLinearToGamma();
 
 	private static double[] createLinearToGamma() {
 		double [] gamma = new double[BYTE_MAX];
 		for (int ii = 0; ii < BYTE_MAX; ++ii) {
-			double normal = ii / 255.0;
+			double normal = ii / MAX;
 			gamma[ii] = dblLinearToGamma(normal);
 		}
 		return gamma;
 	}
 
+	@SuppressWarnings("MagicNumber")
 	private static double dblLinearToGamma(final double normal) {
 		if (normal < reverseCrossover) {
-			return 255.0 * normal * 12.92;
+			return MAX * normal * 12.92;
 		} else {
-			return 255.0 * ((Math.pow(normal, root) * 1.055) - 0.055);
+			return MAX * ((StrictMath.pow(normal, root) * 1.055) - 0.055);
 		}
 	}
 
+	@SuppressWarnings({"MethodDoesntCallSuperMethod", "UseOfClone"})
+	@Override
+	public NtscFloatFilter clone() {
+		return new NtscFloatFilter(this);
+	}
 }

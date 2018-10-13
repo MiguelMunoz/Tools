@@ -9,15 +9,27 @@ import java.awt.Color;
  *
  * @author Miguel Mu\u00f1oz
  */
-public class NtscGrayFilter extends AbstractFilter {
+public class NtscGrayFilter extends AbstractImageFilter {
 
+	private static final int MAX_BYTE = 255;
 	private final Color color;
 	private final int loss;
 
+	@SuppressWarnings("WeakerAccess")
 	public NtscGrayFilter(Color color) {
+		super();
 		this.color = color;
 		loss = gray(color.getRed(), color.getGreen(), color.getBlue());
 	}
+	
+	private NtscGrayFilter(NtscGrayFilter original) {
+		super();
+		color = original.color;
+		loss = original.loss;
+	}
+	
+	@SuppressWarnings("WeakerAccess")
+	protected int getLoss() { return loss; }
 
 	@Override
 	protected int process(final int alpha, final int pRed, final int green, final int blue) {
@@ -37,11 +49,19 @@ public class NtscGrayFilter extends AbstractFilter {
 		int gray = gray(red, grn, blu);
 
 		// It occasionally comes to 256, which is too big.
-		gray = linearToGamma[Math.min(gray, 255)];
+		gray = linearToGamma[Math.min(gray, MAX_BYTE)];
 		return recombine(alpha, gray, gray, gray);
 	}
 	
-	private int gray(int red, int grn, int blu) {
+	protected int gray(int red, int grn, int blu) {
+		//noinspection MagicNumber
 		return ((red * 76245) + (grn * 149685) + (blu * 29070)) / 255000;
+	}
+
+	@SuppressWarnings({"MethodDoesntCallSuperMethod", "UseOfClone"})
+	@Override
+	public NtscGrayFilter clone() {
+		//noinspection CloneCallsConstructors
+		return new NtscGrayFilter(this);
 	}
 }

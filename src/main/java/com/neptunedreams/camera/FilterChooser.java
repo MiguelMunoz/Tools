@@ -19,8 +19,6 @@ import java.awt.event.MouseMotionListener;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Arc2D;
 import java.awt.image.BufferedImage;
-import java.util.LinkedList;
-import java.util.List;
 import javax.swing.JPanel;
 
 /**
@@ -30,6 +28,7 @@ import javax.swing.JPanel;
  *
  * @author Miguel Mu\u00f1oz
  */
+@SuppressWarnings("WeakerAccess")
 public class FilterChooser extends JPanel {
 	public static final int RADIUS = 100;
 	public static final int DIAMETER = RADIUS*2;
@@ -45,10 +44,10 @@ public class FilterChooser extends JPanel {
 	private static final Shape innerCircle = new Arc2D.Double(0, 0, SMALL_RADIUS*2, SMALL_RADIUS*2, 0.0, 360.0, Arc2D.OPEN);
 	
 	private Color displayColor = Color.white;
-	private List<FilterListener> filterListeners = new LinkedList<FilterListener>();
 	private Image controlImage = makeTestImage();
+	private final FilterDestination filterDestination;
 	
-	Canvas display = new Canvas() {
+	private Canvas display = new Canvas() {
 		@SuppressWarnings("MethodDoesntCallSuperMethod")
 		@Override
 		public void paint(final Graphics g) {
@@ -70,13 +69,6 @@ public class FilterChooser extends JPanel {
 			}
 		}
 	};
-	
-	Canvas control = new Canvas() {
-		@Override
-		public void paint(final Graphics g) {
-			g.drawImage(controlImage, 0, 0, this);
-		}
-	};
 
 	private Image makeTestImage() {
 
@@ -85,7 +77,6 @@ public class FilterChooser extends JPanel {
 		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g2 = (Graphics2D) image.getGraphics();
 		setRenderHints(g2);
-		final Stroke s2 = new BasicStroke(2.0f);
 		g2.setStroke(s2);
 		AffineTransform savedTransform = g2.getTransform();
 
@@ -115,12 +106,20 @@ public class FilterChooser extends JPanel {
 		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		g2.setStroke(s2);
 	}
-	
-	public FilterChooser() {
+
+	@SuppressWarnings("MethodDoesntCallSuperMethod")
+	public FilterChooser(FilterDestination filterDestination) {
 		super(new GridLayout(0, 1));
+		this.filterDestination = filterDestination;
 		int size = CONTROL_SIZE;
 		display.setSize(size, size);
 		add(display);
+		final Canvas control = new Canvas() {
+			@Override
+			public void paint(final Graphics g) {
+				g.drawImage(controlImage, 0, 0, this);
+			}
+		};
 		add(control);
 		
 		// add mouse listener here.
@@ -130,7 +129,7 @@ public class FilterChooser extends JPanel {
 			@Override
 			public void mouseDragged(final MouseEvent e) {
 				process(e);
-				submit();
+				submit(displayColor);
 			}
 
 			@Override
@@ -140,7 +139,8 @@ public class FilterChooser extends JPanel {
 
 			private void process(final MouseEvent e) {
 				point.setLocation(e.getX() - CENTER, e.getY() - CENTER);
-				double theta = (Math.atan2(point.y, point.x) / Math.PI / 2.0) + 1.0;
+				//noinspection MagicNumber
+				double theta = (StrictMath.atan2(point.y, point.x) / Math.PI / 2.0) + 1.0;
 				double r = Math.sqrt((point.y * point.y) + (point.x * point.x)) / RADIUS;
 				if (r > 1.0) {
 					r = 1.0;
@@ -152,7 +152,7 @@ public class FilterChooser extends JPanel {
 			@Override
 			public void mouseReleased(final MouseEvent e) {
 				process(e);
-				submit();
+				submit(displayColor);
 			}
 		};
 		control.addMouseListener(ml);
@@ -160,21 +160,9 @@ public class FilterChooser extends JPanel {
 		control.setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
 	}
 	
-	private void submit() {
-		for (FilterListener filterListener: filterListeners) {
-			filterListener.filter(displayColor);
-		}
-	}
-	
-	public void addFilterListener(FilterListener listener) {
-		filterListeners.add(listener);
-	}
-	
-	public void removeFilterListener(FilterListener listener) {
-		filterListeners.remove(listener);
-	}
-	
-	public interface FilterListener {
-		void filter(Color color);
+	private void submit(Color color) {
+		setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+		filterDestination.applyColor(color);
+		setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
 	}
 }
