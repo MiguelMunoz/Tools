@@ -20,6 +20,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
+import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
@@ -56,6 +57,11 @@ public final class LinkBuilder extends JPanel {
   private JTextArea htmlView = new JTextArea(r, c);
   @NotNull
   private JLabel instructions = new JLabel(SELECT_TEXT_TO_LINK);
+  
+  @NotNull
+  private JTextArea cleanUpInputView = new JTextArea(r, c);
+  @NotNull
+  private JTextArea cleanUpOutputView = new JTextArea(r, c);
 
   private JButton copyButton;
   @NotNull
@@ -78,13 +84,16 @@ public final class LinkBuilder extends JPanel {
 
   private LinkBuilder(@NotNull JFrame frame) {
     super(new BorderLayout());
-    add(makeHeadlineView(), BorderLayout.PAGE_START);
-    add(makeCenterView(), BorderLayout.CENTER);
-    add(makeButtonPanel(), BorderLayout.PAGE_END);
+    JTabbedPane tabbedPane = new JTabbedPane();
+    tabbedPane.addTab("Link", makeMainTab());
     Font plainFont = this.getFont(Font.PLAIN, 12, "Verdana", "Arial", "Helvetica", "sans-serif");
+    tabbedPane.addTab("Clean Up", makeCleanupTab());
+    add(tabbedPane, BorderLayout.CENTER);
     textView.setFont(plainFont);
     linkView.setFont(plainFont);
     htmlView.setFont(plainFont);
+    cleanUpInputView.setFont(plainFont);
+    cleanUpOutputView.setFont(plainFont);
     JMenuBar menuBar = new JMenuBar();
     JMenu menu = new JMenu("Edit");
     menu.setMnemonic('e');
@@ -93,8 +102,93 @@ public final class LinkBuilder extends JPanel {
     menuBar.add(menu);
     frame.setJMenuBar(menuBar);
   }
+  
+  private JPanel makeMainTab() {
+    JPanel mainTab = new JPanel(new BorderLayout());
+	  mainTab.add(makeHeadlineView(), BorderLayout.PAGE_START);
+	  mainTab.add(makeCenterView(), BorderLayout.CENTER);
+	  mainTab.add(makeButtonPanel(), BorderLayout.PAGE_END);
+	  return mainTab;
+  }
 
-  @NotNull
+  /**
+   * The Cleanup tab replaces blank lines with break tags.
+   * @return The inner cleanup tab, with input view and output view
+   */
+  private JPanel makeInnerCleanupTab() {
+    JPanel cleanUpTab = new JPanel(new GridLayout(0, 1));
+    cleanUpTab.add(scroll(cleanUpInputView));
+    cleanUpTab.add(scroll(cleanUpOutputView));
+    return cleanUpTab;
+  }
+  
+  private JPanel makeCleanupTab() {
+  	JPanel cleanUpTab = new JPanel(new BorderLayout());
+  	cleanUpTab.add(makeInnerCleanupTab(), BorderLayout.CENTER);
+  	cleanUpTab.add(makeCleanUpButtonPanel(), BorderLayout.PAGE_END);
+  	return cleanUpTab;
+  }
+
+	private JPanel makeCleanUpButtonPanel() {
+  	JPanel buttonPanel = new JPanel(new BorderLayout());
+  	JButton doCleanUp = new JButton("Clean-up and Copy");
+  	buttonPanel.add(BorderLayout.LINE_END, doCleanUp);
+  	doCleanUp.addActionListener(this::cleanUpText);
+  	return buttonPanel;
+	}
+	
+	private void cleanUpText(ActionEvent ignored) {
+		String text = cleanUpInputView.getText();
+		final String finalText = cleanText(text);
+		cleanUpOutputView.setText(finalText);
+
+		Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+		StringSelection stringSelection = new StringSelection(finalText);
+		clipboard.setContents(stringSelection, stringSelection);
+	}
+
+	@SuppressWarnings({"HardcodedFileSeparator", "HardcodedLineSeparator"})
+	private String cleanText(String text) {
+		text = text.replace("\t", " ");
+		text = replaceAll(text, "\n ", "\n");
+		text = replaceAll(text, " \n", "\n");
+		text = replaceAll(text, "\n\n", "\n");
+		text = replaceAll(text, "<br>\n", "<br>");
+		text = replaceAll(text, "\n<br>", "<br>");
+		text = replaceAll(text, "\n", "<br><br>");
+		return text;
+	}
+
+	/**
+	 * I tried saying text = text.replace("\\s$", "$"); to replace space-eol with eol, but
+	 * it didn't work. So I wrote this inefficient, non-regex version, which works fine.
+	 * <p>
+	 * So calling {@code replaceAll("banana", "na", "l")} will return {@code "ball"}
+	 * @param s The string to search
+	 * @param search The text to replace
+	 * @param replacement The replacement text.
+	 * @return A String with the replacements made.
+	 */
+	private String replaceAll(String s, String search, String replacement) {
+  	var index = s.indexOf(search);
+  	if (index >= 0) {
+  		StringBuilder builder = new StringBuilder(s);
+		  final int length = search.length();
+		  final int sLen = search.length();
+		  while (index >= 0) {
+			  int end = index + length;
+			  builder.delete(index, end);
+			  builder.insert(index, replacement);
+			  
+			  // Here, we subtract sLen to handle the case of replaceAll("xaaaabc", "ab", "b");
+			  index = builder.indexOf(search, Math.max(0, (index - sLen) + length));
+		  }
+		  return builder.toString();
+	  }
+	  return s;
+	}
+
+	@NotNull
   private JComponent makeHeadlineView() {
     JPanel view = new JPanel(new BorderLayout());
     view.add(headlineField, BorderLayout.CENTER);
@@ -171,9 +265,14 @@ public final class LinkBuilder extends JPanel {
         createLink();
       }
     };
-//    final int shortcutMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx(); // Use this one for java 10+
-    final int shortcutMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask(); // ...Ex();
-    linkAction.putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke('L', shortcutMask));
+
+	  // Use this for pre java-10
+//	  final KeyStroke ks = KeyStroke.getKeyStroke('L', Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx());
+
+	  // Use this one for java 10+
+	  //noinspection MagicConstant
+	  final KeyStroke ks = KeyStroke.getKeyStroke('L', Toolkit.getDefaultToolkit().getMenuShortcutKeyMask());
+	  linkAction.putValue(Action.ACCELERATOR_KEY, ks);
     linkAction.putValue(Action.NAME, CREATE_LINK_AND_COPY);
     linkAction.setEnabled(false);
 //		button.setDisplayedMnemonicIndex(7);
