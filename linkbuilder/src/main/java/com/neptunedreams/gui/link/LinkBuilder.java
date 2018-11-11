@@ -384,7 +384,7 @@ public final class LinkBuilder extends JPanel {
   }
 
   @NotNull
-  private JComponent scroll(@NotNull JTextArea wrapped) {
+  private JScrollPane scroll(@NotNull JTextArea wrapped) {
     wrapped.setLineWrap(true);
     wrapped.setWrapStyleWord(true);
     return new JScrollPane(wrapped, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
