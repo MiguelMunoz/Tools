@@ -18,6 +18,7 @@
     <jdk-version>1.8</jdk-version>
     <maven.compiler.source>${jdk-version}</maven.compiler.source>
     <maven.compiler.target>${jdk-version}</maven.compiler.target>
+    <maven.compiler.release>8</maven.compiler.release>
   </properties>
 
   <dependencies>
@@ -54,9 +55,9 @@
 	        <!--See https://stackoverflow.com/questions/49398894/unable-to-compile-simple-java-10-project-with-maven-->
 	        <version>3.8.0</version>
 	        <configuration>
-		        <release>${jdk-version}</release>
-		        <source>${jdk-version}</source>
-		        <target>${jdk-version}</target>
+		        <release>${maven.compiler.release}</release>
+		        <source>${maven.compiler.source}</source>
+		        <target>${maven.compiler.target}</target>
 	        </configuration>
 	        
 	        <!--This is supposed to allow you to use Java 10, but it doesn't always work.-->
