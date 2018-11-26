@@ -10,6 +10,8 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -126,7 +128,15 @@ public final class DirDiff extends JPanel {
 			findNonMatches(dir1, dir2, builder);
 		} catch (IOException e) {
 			e.printStackTrace();
+			JOptionPane.showMessageDialog(this, e.getMessage(), e.getClass().getSimpleName(), JOptionPane.ERROR_MESSAGE);
 		}
+		if (builder.length() == 0) {
+			builder.append("No differences found");
+		}
+		builder.append(NEW_LINE);
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("YYYY-MM-dd hh-mm-ss");
+
+		builder.append(formatter.format(OffsetDateTime.now()));
 		textArea.setText(builder.toString());
 	}
 	
@@ -203,6 +213,7 @@ public final class DirDiff extends JPanel {
 			preferences.flush();
 		} catch (BackingStoreException e) {
 			e.printStackTrace();
+			JOptionPane.showMessageDialog(this, e.getMessage(), e.getClass().getSimpleName(), JOptionPane.ERROR_MESSAGE);
 		}
 	}
 
