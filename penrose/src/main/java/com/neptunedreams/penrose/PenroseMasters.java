@@ -477,7 +477,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 
 				double bestAngle;
 				if (isLegalSize) {
-					bestAngle = Math.toDegrees(Math.atan(8.5/14.0)); // ~31 degrees
+					bestAngle = Math.toDegrees(StrictMath.atan(8.5/14.0)); // ~31 degrees
 				} else {
 					bestAngle = 36.0;
 				}
@@ -688,7 +688,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		protected static AffineTransform getRotationTransform(Point2D pFirstPoint, Point2D pLastPoint) {
 			// tangent of angle from the Y axis
 			double tanAngle = (pLastPoint.getX() - pFirstPoint.getX())/(pLastPoint.getY() - pFirstPoint.getY());
-			return AffineTransform.getRotateInstance(Math.atan(tanAngle));
+			return AffineTransform.getRotateInstance(StrictMath.atan(tanAngle));
 		}
 
 //		@Override

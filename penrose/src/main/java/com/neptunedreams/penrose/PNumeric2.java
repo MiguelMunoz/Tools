@@ -17,7 +17,8 @@ import javax.swing.WindowConstants;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * This class is to solve the problem of fitting a rotated parabola to a penrose triangle. 
+ * This class is to solve the problem of fitting a rotated parabola to a penrose triangle. A "penrose triangle" is the
+ * triangle with the biggest angle that can be made from two segments of the larger penrose rhombus.
  * <p>
  * A rotated parabola is described as follows:
  * <p>
@@ -72,7 +73,7 @@ import org.jetbrains.annotations.NotNull;
 @SuppressWarnings({"HardCodedStringLiteral", "MagicNumber", "AccessingNonPublicFieldOfAnotherObject", "MagicCharacter", "StringConcatenation"})
 @ParametersAreNonnullByDefault
 public class PNumeric2 {
-	private static final double alpha = Math.tan(Math.toRadians(36));
+	private static final double alpha = StrictMath.tan(Math.toRadians(36));
 	private static final double theta = Math.toRadians(5); // angle of rotation
 
 	@NotNull
