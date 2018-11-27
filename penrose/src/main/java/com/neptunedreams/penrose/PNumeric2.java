@@ -70,14 +70,13 @@ import org.jetbrains.annotations.NotNull;
  *
  * @author Miguel Mu–oz
  */
-@SuppressWarnings({"HardCodedStringLiteral", "MagicNumber", "AccessingNonPublicFieldOfAnotherObject", "MagicCharacter", "StringConcatenation"})
+@SuppressWarnings({"HardCodedStringLiteral", "MagicNumber", "AccessingNonPublicFieldOfAnotherObject", "MagicCharacter", "StringConcatenation", "UseOfSystemOutOrSystemErr"})
 @ParametersAreNonnullByDefault
 public class PNumeric2 {
 	private static final double alpha = StrictMath.tan(Math.toRadians(36));
-	private static final double theta = Math.toRadians(5); // angle of rotation
 
 	@NotNull
-	private AffineTransform rawTransform = AffineTransform.getRotateInstance(theta);
+	private AffineTransform rawTransform = AffineTransform.getScaleInstance(1.0, 1.0);
 
 	/**
 	 * Returns the point at x, alpha x<sup>2</sup>, where alpha is the tangent of 36¡ This is the small angle of the 
@@ -91,21 +90,34 @@ public class PNumeric2 {
 	}
 
 	@NotNull
-	private static Point2D getPPrime(double x, AffineTransform t) {
+	private static Point2D getPPrimeFromX(double x, AffineTransform t) {
 		Point2D pt = getPoint(x);
 		t.transform(pt, pt);
 		return pt;
 	}
 
-	private Point2D getPPrime(double x) {
-		return getPPrime(x, rawTransform);
+	private Point2D getPPrime(double x, AffineTransform transform) {
+		//noinspection UseOfSystemOutOrSystemErr
+		assert !Double.isNaN(x);
+		return getPPrimeFromX(x, transform);
 	}
 	
 
 	public static void main(String[] args) {
+		
 		JFrame frame = new JFrame("PenroseNumeric");
 		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-		final PNumeric2 penroseNumeric = new PNumeric2();
+		double theta = 5.0; //	angle of rotation, degrees 
+
+
+		if (args.length > 0) {
+			try {
+				theta = Double.valueOf(args[0]);
+			} catch (NumberFormatException e) {
+				System.out.printf("Error reading value `%s`: %s. Using default value of %3.1f%n", args[0], e.getMessage(), theta);
+			}
+		}
+		final PNumeric2 penroseNumeric = new PNumeric2(theta);
 		Canvas canvas = new Canvas() {
 			@Override
 			public void paint(Graphics g) {
@@ -273,41 +285,35 @@ public class PNumeric2 {
 	private final double xEnd;
 	@NotNull
 	private final Point2D midPoint;
-	
-	PNumeric2() {
-		final Function findYPrime = new Function() {
-			@Override
-			public double f(double x) {
-				return getPPrime(x).getY();
-			}
-		};
+
+	/**
+	 * Create an object that calculates the coordinates of the Bezier-curve control points. These values depend on how
+	 * far the axis of the parabola is rotated from the short axis of the larger rhombus. This value is measured in 
+	 * degrees
+	 * @param theta Rotation angle, in degrees.
+	 */
+	PNumeric2(double theta) {
+		rawTransform = AffineTransform.getRotateInstance(Math.toRadians(theta));
+		final Function findYPrime = x -> getPPrime(x, rawTransform).getY();
 
 		/*
 		 * Finds the value of x on the other side of the Y axis that produces
 		 * the same yPrime that this x produces.
 		 */
-		final Function findMatchingX = new Function() {
-			@Override
-			public double f(double x) {
-				double leftYPrime = getPPrime(x).getY();
-				return interpolate(findYPrime, leftYPrime, -x);
-			}
+		final Function findMatchingX = x -> {
+			double leftYPrime = getPPrime(x, getT()).getY();
+			return interpolate(findYPrime, leftYPrime, -x);
 		};
 
-		Function fRatio = new Function() {
-			@Override
-			public double f(double x) {
-				return ratio(x, findMatchingX);
-			}
-		};
+		Function fRatio = x -> ratio(x, findMatchingX, rawTransform);
 		final double x1 = interpolate(fRatio, alpha, 1.0);
 		final double x2 = findMatchingX.f(x1);
-		Point2D pp1 = getPPrime(x1);
-		Point2D pp2 = getPPrime(x2);
+		Point2D pp1 = getPPrime(x1, rawTransform);
+		Point2D pp2 = getPPrime(x2, rawTransform);
 
 		double midPrime = (pp2.getX() + pp1.getX()) / 2.0;
-		double mid = reverseX(midPrime, midPrime);
-		midPoint = getPPrime(mid);
+		double mid = reverseX(midPrime, midPrime, rawTransform);
+		midPoint = getPPrime(mid, rawTransform);
 
 		// Calculate the translation.
 //		System.out.printf("MidPoint: %s%n", toFormat("%7.4f", midPoint));
@@ -318,8 +324,8 @@ public class PNumeric2 {
 		rawTransform = AffineTransform.getTranslateInstance(-midPoint.getX(), -midPoint.getY());
 		rawTransform.concatenate(tr0);
 
-		pp1 = getPPrime(x1);
-		pp2 = getPPrime(x2);
+		pp1 = getPPrime(x1, rawTransform );
+		pp2 = getPPrime(x2, rawTransform);
 		double xp1 = pp1.getX();
 		double xp2 = pp2.getX();
 		double scale = Math.abs(2 / (xp2 - xp1));
@@ -333,10 +339,12 @@ public class PNumeric2 {
 		tr1 = rawTransform;
 		rawTransform = AffineTransform.getScaleInstance(scale, scale);
 		rawTransform.concatenate(tr1);
-//		rawInverse = invert(rawTransform);
+		rawTransform = tr1;
+//		rawTransform = transform;
+//		rawInverse = invert(transform);
 //
-		pp1 = getPPrime(x1);
-		pp2 = getPPrime(x2);
+		pp1 = getPPrime(x1, rawTransform);
+		pp2 = getPPrime(x2, rawTransform);
 		xp1 = pp1.getX();
 		xp2 = pp2.getX();
 //		scale = 2 / (xp2 - xp1);
@@ -345,13 +353,13 @@ public class PNumeric2 {
 //		System.out.printf("Scale: %17.14f%n", scale);
 		xStart = x1;
 		xEnd = x2;
-		xMid = reverseX((xp1 + xp2)/2.0, 0.0);
+		xMid = reverseX((xp1 + xp2)/2.0, 0.0, rawTransform);
 
 //		System.out.printf("Start: %7.4f%nMid:   %7.4f%nEnd:   %7.4f%n", xStart, xMid, xEnd);
 	}
 
 	@NotNull
-	private AffineTransform getT() {
+	AffineTransform getT() {
 		return rawTransform;
 	}
 
@@ -372,22 +380,22 @@ public class PNumeric2 {
 	 * @param xPrime A number in the range from -1 to 1;
 	 * @return The value of y, after mapping the input to a range matching the x1 and x2 members of this instance.
 	 */
-	double getYFromMappedX(double xPrime) {
-		double x = reverseX(xPrime, xPrime);
-		return getPPrime(x).getY();
+	double getYFromMappedX(double xPrime, AffineTransform transform) {
+		double x = reverseX(xPrime, xPrime, transform);
+		return getPPrime(x, transform).getY();
 	}
 
-	private double ratio(double x1, Function f) {
+	private double ratio(double x1, Function f, AffineTransform transform) {
 		double x2 = f.f(x1);
-		Point2D pp1 = getPPrime(x1);
-		Point2D pp2 = getPPrime(x2);
+		Point2D pp1 = getPPrime(x1, transform);
+		Point2D pp2 = getPPrime(x2, transform);
 		double yP = pp1.getY();
 		double yP2 = pp2.getY();
 		assert fuzzyEquals(pp1.getY(), pp2.getY()) : String.format("Mismatch: %23.20f != %23.20f [%23.20f] for x (%6.3f - %6.3f)", yP, yP2, yP/yP2, x1, x2);
 		
 		double xPMid = (pp1.getX() + pp2.getX()) / 2;
 		
-		Point2D pPMid = getPPrime(reverseX(xPMid, xPMid));
+		Point2D pPMid = getPPrime(reverseX(xPMid, xPMid, transform), transform);
 //		double yPMid = yPrime(reverseX(xPMid, xPMid));
 		double deltaY = pp2.getY() - pPMid.getY();
 		return Math.abs(deltaY/(pp2.getX()-xPMid));
@@ -404,13 +412,8 @@ public class PNumeric2 {
 		return (ratio > 0.99999999999999) && (ratio <= 1.0000000000001);
 	}
 	
-	private double reverseX(double expected, double startingX) {
-		Function f = new Function() {
-			@Override
-			public double f(double x) {
-				return getPPrime(x).getX();
-			}
-		};
+	private double reverseX(double expected, double startingX, AffineTransform transform) {
+		Function f = x -> getPPrime(x, transform).getX();
 		return interpolate(f, expected, startingX);
 	}
 
@@ -424,6 +427,7 @@ public class PNumeric2 {
 	 * @param startingX A reasonable starting point for the X you are looking for.
 	 * @return A value for x such that f(x) returns expectedY
 	 */
+	@SuppressWarnings("FloatingPointEquality")
 	private static double interpolate(Function f, double expectedY, double startingX) {
 //		System.out.println("Interpolate: t = [" + expectedY + ']');
 		double guess = startingX;
@@ -446,6 +450,7 @@ public class PNumeric2 {
 		return guess;
 	}
 	
+	@FunctionalInterface
 	public interface Function {
 		double f(double x);
 	}

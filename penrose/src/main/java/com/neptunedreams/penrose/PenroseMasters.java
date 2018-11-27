@@ -72,7 +72,6 @@ import org.jetbrains.annotations.NotNull;
  * $C<sub>1</sub>=\frac{2}{3}C+\frac{1}{3}P<sub>1</sub>$ and
  * $C<sub>2</sub>=\frac{2}{3}C+\frac{1}{3}P<sub>2</sub>$. 
  * 
- * <p>
  * <p>Created by IntelliJ IDEA.
  * <p>Date: 4/16/14
  * <p>Time: 7:53 PM
@@ -111,6 +110,8 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 //		}
 //		return false;
 //	}
+	
+	private static PNumeric2 penroseNumeric;
 
 	/**
 	 * Print master shapes.
@@ -125,6 +126,17 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 	 * @param args user parameters
 	 */
 	public static void main(String[] args) {
+		double theta = 5.0; // degrees
+
+		if (args.length > 0) {
+			try {
+				theta = Double.valueOf(args[0]);
+			} catch (NumberFormatException e) {
+				System.out.printf("Error reading value `%s`: %s. Using default value of %3.1f%n", args[0], e.getMessage(), theta);
+			}
+		}
+		System.out.printf("Rotation of %3.1f degrees%n", theta);
+		penroseNumeric = new PNumeric2(theta);
 //		if (args.length > 0) {
 //			printDoublePage = true;
 //		}
@@ -136,7 +148,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		System.out.println("Petal:");
 		@NotNull
 		Shape[] petalShapes = makePetal(shapeType);
-		JFrame frame = new JFrame("Penrose Petal");
+		JFrame frame = new JFrame(String.format("Penrose Petal: %3.1f degrees", theta));
 		PenroseMasters pm = new PenroseMasters(petalShapes, 0, 0, false);
 		frame.add(pm);
 		frame.pack();
@@ -151,7 +163,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		System.out.println("\nLeaf:");
 		
 		Shape[] leafShapes = makeLeaf(shapeType);
-		frame = new JFrame("Penrose Leaf");
+		frame = new JFrame(String.format("Penrose Leaf: %3.1f degrees", theta));
 		pm = new PenroseMasters(leafShapes, 150, 120, true);
 		frame.add(pm);
 		frame.pack();
@@ -180,7 +192,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 	
 	@NotNull
 	private static QList<PNumeric2.BezierPath> makeBasicPaths() {
-		PNumeric2 pb = new PNumeric2();
+		PNumeric2 pb = penroseNumeric;
 
 		PNumeric2.BezierPath rightPath = pb.makeRightPath();
 		PNumeric2.BezierPath leftPath = pb.makeLeftPath();
@@ -195,7 +207,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 
 	@NotNull
 	private static QList<QList<Point2D>> makeBasicShapes() {
-		PNumeric2 pb = new PNumeric2(); // pb is short for parabola. This has the numbers from a rotated parabola
+		PNumeric2 pb = penroseNumeric; // pb is short for parabola. This has the numbers from a rotated parabola
 		System.out.println("Numeric: " + pb.getClass());
 
 		QList<Point2D> rightPointList = new LinkedQueue<>();
@@ -208,9 +220,9 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 			
 			// Rotated parabola:
 			double x = -ii/(double)segmentCount;
-			double y = pb.getYFromMappedX(x);
+			double y = pb.getYFromMappedX(x, pb.getT());
 			rightPointList.add(new Point2D.Double(-x, y));
-			y = pb.getYFromMappedX(-x);
+			y = pb.getYFromMappedX(-x, pb.getT());
 			dummyLeftPointList.add(new Point2D.Double(x, y));
 			
 //			Point2D[] bezierPoints = pb.getBezier(0.0, 1.0);
