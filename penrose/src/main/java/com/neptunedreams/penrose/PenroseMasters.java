@@ -26,13 +26,17 @@ import java.awt.print.PrinterJob;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
+import java.util.function.Supplier;
 import javax.swing.BorderFactory;
+import javax.swing.BoundedRangeModel;
+import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JSlider;
+import javax.swing.JTextField;
 import javax.swing.JToolBar;
 import javax.swing.WindowConstants;
 import javax.swing.border.Border;
@@ -63,23 +67,33 @@ import org.jetbrains.annotations.NotNull;
  * <strong>Bezier Representation</strong><br>
  * <p>You can do this in two steps, first convert the parabola segment to a quadratic Bezier curve (with a single 
  * control point), then convert it to a cubic Bezier curve (with two control points).
- * <p>Let $f(x)=Ax^2+Bx+C$ be the parabola and let $x<sub>1</sub>$ and $x<sub>2</sub>$ be the edges of the segment on which the parabola is 
- * defined.
+ * <p>Let f(x)=Ax<sup>2</sup>+Bx+C be the parabola and let x<sub>1</sub> and x<sub>2</sub> be the edges of the segment on 
+ * which the parabola is defined.
  * <p>
- * Then $P<sub>1</sub>=(x<sub>1</sub>,f(x<sub>1</sub>))$ and $P<sub>2</sub>=(x<sub>2</sub>,f(x<sub>2</sub>))$ are the Bezier curve start and end points
- * and $C=(\frac{x<sub>1</sub>+x<sub>2</sub>}{2},f(x<sub>1</sub>)+f'(x<sub>1</sub>)\cdot \frac{x<sub>1</sub>+x<sub>2</sub>}{2})$ is the control point for the quadratic Bezier curve.
+ * Then P<sub>1</sub>=(x<sub>1</sub>,f(x<sub>1</sub>)) and P<sub>2</sub>=(x<sub>2</sub>,f(x<sub>2</sub>)) 
+ * are the Bezier curve start and end points, and 
+ * <br>
+ *   C=((x<sub>1</sub>+x<sub>2</sub>)/2, (f(x<sub>1</sub>)+f'(x<sub>1</sub>)(x<sub>1</sub>+x<sub>2</sub>)/2)) is the 
+ * control point for the quadratic Bezier curve.
+ * 
+ * <pre> <!-- Meant to be seen in JavaDocs. Don't mess with the spacking.) -->
+ *        x<sub>1</sub> + x<sub>2</sub>                   x<sub>2</sub> - x<sub>1</sub>
+ *   C =  -------, f(x<sub>1</sub>) + f`(x<sub>1</sub>) ¥ -------
+ *           2                         2
+ * </pre>
  * <p>Now you can convert this quadratic Bezier curve to a cubic Bezier curve by define the two control points as:
  * $C<sub>1</sub>=\frac{2}{3}C+\frac{1}{3}P<sub>1</sub>$ and
  * $C<sub>2</sub>=\frac{2}{3}C+\frac{1}{3}P<sub>2</sub>$. 
+ * <br>(This method does not use that last step. I don't know what the advantage is, if any. Speed is not an issue.)
  * 
  * <p>Created by IntelliJ IDEA.
  * <p>Date: 4/16/14
  * <p>Time: 7:53 PM
  *
- * @author Miguel Mu–oz
+ * @author Miguel Mu\u00f1oz
  */
 @javax.annotation.ParametersAreNonnullByDefault
-@SuppressWarnings({"UseOfSystemOutOrSystemErr", "HardCodedStringLiteral", "HardcodedLineSeparator", "MagicNumber", "StringConcatenation"})
+@SuppressWarnings({"UseOfSystemOutOrSystemErr", "HardCodedStringLiteral", "HardcodedLineSeparator", "MagicNumber", "StringConcatenation", "WeakerAccess"})
 public final class PenroseMasters extends JPanel implements Pageable, Printable {
 
 	// PRINT_SCALE is just for printing the coordinates of the points.
@@ -89,16 +103,17 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 	private final Canvas mCanvas;
 	private final boolean isLegalSize;
 	
+	private static Deque<PNumeric2.BezierPath> basicPaths;
 	private static PNumeric2 penroseNumeric;
+	private static BoundedRangeModel rangeModel = new DefaultBoundedRangeModel(0, 0, 0, 150);
 
 	/**
 	 * Print master shapes.
 	 * <pre>
 	 * Usage:
-	 *   java PenroseMasters
-	 *   java PenroseMasters bezier
-	 *   java PenroseMasters double
-	 *   java PenroseMasters bezier double
+	 *   java PenroseMasters      ! Use default value of 6 degrees
+	 *   java PenroseMasters 7    ! Use 7 degrees
+	 *   java PenroseMasters 6 n  ! use 6 degrees, don't draw the origin or axes.
 	 * </pre>
 	 * 
 	 * @param args user parameters
@@ -119,14 +134,12 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 			}
 		}
 		System.out.printf("Rotation of %3.1f degrees%n", theta);
-		penroseNumeric = new PNumeric2(theta);
+		makeDataFromAngle(theta);
 
 		System.out.println("Petal:");
-		Deque<PNumeric2.BezierPath> basicPaths = makeBasicPaths();
-		@NotNull
-		Shape[] petalShapes = makePetal(basicPaths);
+		Shape[] petalShapes = makeBezierPetal(basicPaths);
 		JFrame frame = new JFrame(String.format("Penrose Petal: %3.1f degrees", theta));
-		PenroseMasters pm = new PenroseMasters(petalShapes, 150, 120, false);
+		PenroseMasters pm = new PenroseMasters(petalShapes, 150, 120, false, drawOrigin, petalSupplier);
 		frame.add(pm);
 		frame.pack();
 		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -139,9 +152,9 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 
 		System.out.println("\nLeaf:");
 		
-		Shape[] leafShapes = makeLeaf(basicPaths);
+		Shape[] leafShapes = makeBezierLeaf(basicPaths);
 		frame = new JFrame(String.format("Penrose Leaf: %3.1f degrees", theta));
-		pm = new PenroseMasters(leafShapes, 150, 120, true);
+		pm = new PenroseMasters(leafShapes, 150, 120, true, drawOrigin, leafSupplier);
 		frame.add(pm);
 		frame.pack();
 		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -152,6 +165,15 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		assert leafShapes[0] != null;
 		printDataPoints(leafShapes[0]);
 	}
+	
+	private static void makeDataFromAngle(double angleDegrees) {
+		penroseNumeric = new PNumeric2(angleDegrees);
+		basicPaths = makeBasicPaths();
+		rangeModel.setValue((int) Math.round(angleDegrees * 10));
+	}
+
+	private static Supplier<Shape[]> petalSupplier = () -> { return makeBezierPetal(basicPaths); };
+	private static Supplier<Shape[]> leafSupplier = () -> { return makeBezierLeaf(basicPaths); };
 
 	private void installToolbar(@NotNull JFrame pFrame) {
 		JToolBar toolBar = new JToolBar(JToolBar.HORIZONTAL);
@@ -168,23 +190,13 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 	}
 	
 	@NotNull
-	private static QList<PNumeric2.BezierPath> makeBasicPaths() {
+	private static Deque<PNumeric2.BezierPath> makeBasicPaths() {
 		PNumeric2 pb = penroseNumeric;
 
 		PNumeric2.BezierPath rightPath = pb.makeRightPath();
 		PNumeric2.BezierPath leftPath = pb.makeLeftPath();
 		
-		return new LinkedQueue<>(Arrays.asList(rightPath, leftPath));
-	}
-
-	@NotNull
-	private static Shape[] makePetal(Deque<PNumeric2.BezierPath> basicShapes) {
-		return makeBezierPetal(basicShapes);
-	}
-
-	@NotNull
-	private static Shape[] makeLeaf(Deque<PNumeric2.BezierPath> basicShapes) {
-		return makeBezierLeaf(basicShapes);
+		return new LinkedList<>(Arrays.asList(rightPath, leftPath));
 	}
 
 	@NotNull
@@ -280,28 +292,29 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 	}
 
 	@NotNull
-	private static Path2D makePathFromList(List<Point2D> pointList) {
+	private static Path2D makePathFromList(Deque<Point2D> pointList) {
 		Path2D path = new Path2D.Double();
-		Point2D start = pointList.get(0);
+		Iterator<Point2D> iterator = pointList.iterator();
+		Point2D start = iterator.next();
 		path.moveTo(start.getX(), start.getY());
-		List<Point2D> subList = pointList.subList(1, pointList.size());
-		for (Point2D point: subList) {
+		while (iterator.hasNext()) {
+			Point2D point = iterator.next();
 			path.lineTo(point.getX(), point.getY());
 		}
 		return path;
 	}
 
 	@NotNull
-	private static  <T> QList<T> makeInverted(QList<T> list) {
-		ListIterator<T> iterator = list.listIterator(list.size());
-		QList<T> inverted = new LinkedQueue<>();
-		while (iterator.hasPrevious()) {
-			inverted.add(iterator.previous());
+	private static <T> Deque<T> invert(Collection<T> list) {
+		Deque<T> inverted = new LinkedList<>();
+		for (T t: list) {
+			inverted.addFirst(t);
 		}
 		return inverted;
 	}
 
-	private final Shape[] allShapes;
+	@NotNull
+	private Shape[] allShapes = new Shape[2];
 
 	/**
 	 * Create a new PenroseMasters, using the specified shapes, to be drawn at the specified point, on the specified size
@@ -311,7 +324,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 	 * @param yDelta The y-offset, for drawing
 	 * @param isLegalSize true for legal size paper, false otherwise.
 	 */
-	private PenroseMasters(@NotNull final Shape[] shapes, final int xDelta, final int yDelta, final boolean isLegalSize) {
+	private PenroseMasters(@NotNull final Shape[] shapes, final int xDelta, final int yDelta, final boolean isLegalSize, boolean drawOrigin, Supplier<Shape[]> shapeSource) {
 		super(new BorderLayout());
 		this.isLegalSize = isLegalSize;
 		
@@ -333,7 +346,9 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 
 				Stroke stroke = new BasicStroke((0.0720f)); // one mill thick.
 				g2.setStroke(stroke);
-				drawOrigin(g2);
+				if (drawOrigin) {
+					drawOrigin(g2);
+				}
 				g2.setColor(Color.black);
 
 				double bestAngle;
@@ -396,10 +411,6 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 				g2.setColor(savedColor);
 			}
 
-			@Override
-			public void update(Graphics g) {
-				paint(g);
-			}
 		};
 		mCanvas.setMinimumSize(new Dimension(100, 100));
 		mCanvas.setPreferredSize(new Dimension(1400, 1000));
@@ -409,6 +420,33 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		setBorder(border);
 
 		add(mCanvas, BorderLayout.CENTER);
+		
+		addSlider(shapeSource);
+	}
+	
+	private void addSlider(final Supplier<Shape[]> shapeSource) {
+		JSlider slider = new JSlider(rangeModel);
+		JTextField valueField = new JTextField(4);
+		valueField.setEditable(false);
+		slider.addChangeListener(e -> {
+			int value = rangeModel.getValue();
+			double theta = value/10.0;
+			makeDataFromAngle(theta);
+			allShapes = shapeSource.get();
+			mCanvas.revalidate();
+			mCanvas.repaint();
+			showValue(valueField, theta);
+		});
+		
+		JPanel sliderPanel = new JPanel(new BorderLayout());
+		sliderPanel.add(slider, BorderLayout.CENTER);
+		sliderPanel.add(valueField, BorderLayout.LINE_END);
+		showValue(valueField, rangeModel.getValue()/10.0);
+		add(sliderPanel, BorderLayout.PAGE_END);
+	}
+
+	private void showValue(final JTextField valueField, final double theta) {
+		valueField.setText(String.format("%4.1f", theta));
 	}
 
 	private void doPrint() {
@@ -487,7 +525,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		private Shape shape;
 		
 		@NotNull
-		public static TileSegment buildFromPoints(QList<Point2D> points) {
+		public static TileSegment buildFromPoints(Deque<Point2D> points) {
 			Path2D path = makePathFromList(points);
 			Point2D firstPoint = points.getFirst();
 			Point2D lastPoint = points.getLast();
@@ -543,8 +581,8 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 			System.out.printf("Flipping vector: (%7.4f, %7.4f)%n", delta.getX(), delta.getY());
 			flip.translate(-delta.getX(), -delta.getY());
 			Shape flippedCopy = flip.createTransformedShape(shape);
-			QList<Point2D> points = getCurrentPoints(flippedCopy);
-			QList<Point2D> revisedList = makeInverted(points);
+			Deque<Point2D> points = getCurrentPoints(flippedCopy);
+			Deque<Point2D> revisedList = invert(points);
 			return TileSegment.buildFromPoints(revisedList);
 		}
 
@@ -554,7 +592,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		}
 
 		@NotNull
-		private static QList<Point2D> getCurrentPoints(Shape shape) {QList<Point2D> points = new LinkedQueue<>();
+		private static Deque<Point2D> getCurrentPoints(Shape shape) {Deque<Point2D> points = new LinkedList<>();
 			PathIterator iterator = shape.getPathIterator(new AffineTransform());
 			double[] data = new double[6];
 			while (!iterator.isDone()) {
@@ -570,7 +608,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 
 		@NotNull
 		public Point2D getVector() {
-			QList<Point2D> points = getCurrentPoints(shape);
+			Deque<Point2D> points = getCurrentPoints(shape);
 			Point2D firstPoint = points.getFirst();
 			Point2D lastPoint = points.getLast();
 			
@@ -603,7 +641,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 			((Path2D)shape).append(newSegment.getCurrentShape(), false);
 			
 			// Calculate a new length
-			QList<Point2D> currentPoints = TileSegment.getCurrentPoints(getCurrentShape());
+			Deque<Point2D> currentPoints = TileSegment.getCurrentPoints(getCurrentShape());
 			Point2D first = currentPoints.getFirst();
 			Point2D last = currentPoints.getLast();
 			length = first.distance(last);
@@ -622,6 +660,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 	public static void printShape(String title, Shape shape) {
 		PathIterator itr = shape.getPathIterator(null);
 		System.out.println("\n\nTile Segment " + title);
+		Deque<Point2D> ptList = new LinkedList<>();
 		while (!itr.isDone()) {
 			double[] ps = new double[6];
 			int type = itr.currentSegment(ps);
@@ -633,6 +672,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 				case PathIterator.SEG_MOVETO:
 					String txt = (type == PathIterator.SEG_LINETO) ? "lin" : "mov";
 					System.out.printf("%s: (%15.12f, %15.12f, 0.0)%n", txt, ps[0], ps[1]);
+					ptList.add(new Point2D.Double(ps[0], ps[1]));
 					break;
 				case PathIterator.SEG_CLOSE:
 					System.out.println("close");
@@ -642,25 +682,36 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 			}
 			itr.next();
 		}
-		
-	}
 
-	public interface QList<T> extends Deque<T>, List<T> { }
-
-	/**
-	 * This gives us an interface for a LinkedList that gives us the API of both List and Deque. This way,
-	 * I can avoid declaring my variables as LinkedList, and declare them as QList, which is an interface, but I can
-	 * still call Deque.first() and .
-	 * @param <T>
-	 */
-	@SuppressWarnings({"ClassExtendsConcreteCollection", "CloneableClassWithoutClone"})
-	public static class LinkedQueue<T> extends LinkedList<T> implements QList<T> {
-		public LinkedQueue() {
-			super();
-		}
-
-		public LinkedQueue(Collection<? extends T> c) {
-			super(c);
+		double cross1 = 0;
+		double cross2 = 0;
+		if (ptList.size() == 4) {
+			Iterator<Point2D> ptItr = ptList.iterator();
+			Point2D pt1 = ptItr.next();
+			Point2D pt2 = ptItr.next();
+			cross1 = pt1.distance(ptItr.next());
+			cross2 = pt2.distance(ptItr.next());
+			System.out.printf("CrossDistances:%n  %15.12f%n  %15.12f%n", cross1, cross2);
 		}
 	}
+
+	// This was clever, but ultimately unnecessary. There's a way to do this totally with Deque
+//	public interface QList<T> extends Deque<T>, List<T> { }
+//
+//	/**
+//	 * This gives us an interface for a LinkedList that gives us the API of both List and Deque. This way,
+//	 * I can avoid declaring my variables as LinkedList, and declare them as QList, which is an interface, but I can
+//	 * still call Deque.getFirst() as well as List.get(T) and List.sublist().
+//	 * @param <T>
+//	 */
+//	@SuppressWarnings({"ClassExtendsConcreteCollection", "CloneableClassWithoutClone"})
+//	public static class LinkedQueue<T> extends LinkedList<T> implements QList<T> {
+//		public LinkedQueue() {
+//			super();
+//		}
+//
+//		public LinkedQueue(Collection<? extends T> c) {
+//			super(c);
+//		}
+//	}
 }

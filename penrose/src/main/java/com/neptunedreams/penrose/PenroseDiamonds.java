@@ -33,8 +33,9 @@ import javax.swing.KeyStroke;
  * <p>Date: 3/9/14
  * <p>Time: 12:46 AM
  *
- * @author Miguel Mu–oz
+ * @author Miguel Mu\u00f1oz
  */
+@SuppressWarnings({"HardCodedStringLiteral", "MagicNumber"})
 public class PenroseDiamonds extends JPanel {
 
 	private static final double DPI = 72; // Dots per inch (1 dot = 1 screen pixel)
@@ -46,11 +47,11 @@ public class PenroseDiamonds extends JPanel {
 	private static final double deg36 = toRads(36);
 
 	// width/height = tan(18) (degrees)
-	private static final double diamondWidth = diamondHeight * Math.tan(deg18);
-	private static final double edgeLength = diamondWidth / Math.sin(deg18) / 2.0;
+	private static final double diamondWidth = diamondHeight * StrictMath.tan(deg18);
+	private static final double edgeLength = diamondWidth / StrictMath.sin(deg18) / 2.0;
 
-	private double bigDiamondWidth = Math.sin(deg36)*edgeLength*2;
-	private double bigDiamondHeight = Math.cos(deg36)*edgeLength*2;
+	private double bigDiamondWidth = StrictMath.sin(deg36)*edgeLength*2;
+	private double bigDiamondHeight = StrictMath.cos(deg36)*edgeLength*2;
 	private static final double phi = (1.0+ Math.sqrt(5.0))/2.0;
 //	private static final double FINE_RADIUS_THIN_DMD = (edgeLength - (edgeLength / phi))/2.0; //5.0; // best
 //	private static final double FINE_RADIUS_THIN_DMD = (edgeLength / phi); //5.0; // best

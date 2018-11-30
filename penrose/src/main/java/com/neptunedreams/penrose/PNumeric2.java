@@ -68,18 +68,20 @@ import org.jetbrains.annotations.NotNull;
  * <p>Date: 7/7/14
  * <p>Time: 3:15 PM
  *
- * @author Miguel Mu–oz
+ * @author Miguel Mu\u00f1oz
  */
 @SuppressWarnings({"HardCodedStringLiteral", "MagicNumber", "AccessingNonPublicFieldOfAnotherObject", "MagicCharacter", "StringConcatenation", "UseOfSystemOutOrSystemErr"})
 @ParametersAreNonnullByDefault
 public class PNumeric2 {
+	// Alpha is really an arbitrary number, which determines the size of the parabola. I settled on this value because
+	// I was also using it for another constant which specified the smaller angle of the bigger rhombus.
 	private static final double alpha = StrictMath.tan(Math.toRadians(36));
 
 	@NotNull
 	private AffineTransform rawTransform = AffineTransform.getScaleInstance(1.0, 1.0);
 
 	/**
-	 * Returns the point at x, alpha x<sup>2</sup>, where alpha is the tangent of 36¡ This is the small angle of the 
+	 * Returns the point at x, alpha x<sup>2</sup>, where alpha is the tangent of 36\u00b0 This is the small angle of the 
 	 * leaf shape, and half the small angle of the petal shape. (Actually, the angles of the rhombuses on which the
 	 * shapes are based.)
 	 * @param x double value
@@ -274,8 +276,9 @@ public class PNumeric2 {
 			return interpolate(findYPrime, leftYPrime, -x);
 		};
 
+		double rhombusAngle = StrictMath.tan(Math.toRadians(36.0));
 		Function fRatio = x -> ratio(x, findMatchingX, rawTransform);
-		final double x1 = interpolate(fRatio, alpha, 1.0);
+		final double x1 = interpolate(fRatio, rhombusAngle, 1.0);
 		final double x2 = findMatchingX.f(x1);
 		Point2D pp1 = getPPrime(x1, rawTransform);
 		Point2D pp2 = getPPrime(x2, rawTransform);
@@ -309,7 +312,6 @@ public class PNumeric2 {
 		xStart = x1;
 		xEnd = x2;
 		xMid = reverseX((xp1 + xp2)/2.0, 0.0, rawTransform);
-
 	}
 
 	@NotNull
@@ -350,14 +352,17 @@ public class PNumeric2 {
 	}
 	
 	private static boolean fuzzyEquals(double a, double b) {
+		final double delta = 0.0000000000001;
+		final double lowR = 1.0-delta;
+		final double highR = 1.0+delta;
 		if (a == 0.0) {
-			return Math.abs(b) < 0.0000000000001;
+			return Math.abs(b) < delta;
 		}
 		if (b == 0.0) {
-			return Math.abs(a) < 0.0000000000001;
+			return Math.abs(a) < delta;
 		}
 		double ratio = a / b;
-		return (ratio > 0.99999999999999) && (ratio <= 1.0000000000001);
+		return (ratio > lowR) && (ratio <= highR);
 	}
 	
 	private double reverseX(double expected, double startingX, AffineTransform transform) {
