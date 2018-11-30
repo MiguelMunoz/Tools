@@ -105,6 +105,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 	 */
 	public static void main(String[] args) {
 		double theta = 5.0; // degrees
+		boolean drawOrigin = true;
 
 		if (args.length > 0) {
 			try {
@@ -112,15 +113,20 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 			} catch (NumberFormatException e) {
 				System.out.printf("Error reading value `%s`: %s. Using default value of %3.1f%n", args[0], e.getMessage(), theta);
 			}
+			
+			if (args.length > 1) {
+				drawOrigin = false;
+			}
 		}
 		System.out.printf("Rotation of %3.1f degrees%n", theta);
 		penroseNumeric = new PNumeric2(theta);
 
 		System.out.println("Petal:");
+		Deque<PNumeric2.BezierPath> basicPaths = makeBasicPaths();
 		@NotNull
-		Shape[] petalShapes = makePetal();
+		Shape[] petalShapes = makePetal(basicPaths);
 		JFrame frame = new JFrame(String.format("Penrose Petal: %3.1f degrees", theta));
-		PenroseMasters pm = new PenroseMasters(petalShapes, 0, 0, false);
+		PenroseMasters pm = new PenroseMasters(petalShapes, 150, 120, false);
 		frame.add(pm);
 		frame.pack();
 		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -133,7 +139,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 
 		System.out.println("\nLeaf:");
 		
-		Shape[] leafShapes = makeLeaf();
+		Shape[] leafShapes = makeLeaf(basicPaths);
 		frame = new JFrame(String.format("Penrose Leaf: %3.1f degrees", theta));
 		pm = new PenroseMasters(leafShapes, 150, 120, true);
 		frame.add(pm);
@@ -172,61 +178,24 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 	}
 
 	@NotNull
-	private static QList<QList<Point2D>> makeBasicShapes() {
-		PNumeric2 pb = penroseNumeric; // pb is short for parabola. This has the numbers from a rotated parabola
-		System.out.println("Numeric: " + pb.getClass());
-
-		QList<Point2D> rightPointList = new LinkedQueue<>();
-		QList<Point2D> dummyLeftPointList = new LinkedQueue<>();
-
-		// Calculate the right side as a parabola
-		final int segmentCount = 4;
-		for (int ii = 0; ii <= segmentCount; ++ii) {
-
-			
-			// Rotated parabola:
-			double x = -ii/(double)segmentCount;
-			double y = pb.getYFromMappedX(x);
-			rightPointList.add(new Point2D.Double(-x, y));
-			y = pb.getYFromMappedX(-x);
-			dummyLeftPointList.add(new Point2D.Double(x, y));
-		}
-		
-		for (Point2D pt: rightPointList) {
-			System.out.printf("basicShape: (%7.4f, %7.4f)%n", pt.getX(), pt.getY());
-		}
-		
-		QList<QList<Point2D>> resultList = new LinkedQueue<>();
-		resultList.add(rightPointList);
-		resultList.add(dummyLeftPointList);
-		return resultList;
+	private static Shape[] makePetal(Deque<PNumeric2.BezierPath> basicShapes) {
+		return makeBezierPetal(basicShapes);
 	}
 
 	@NotNull
-	private static Shape[] makePetal() {
-		return makeBezierPetal();
+	private static Shape[] makeLeaf(Deque<PNumeric2.BezierPath> basicShapes) {
+		return makeBezierLeaf(basicShapes);
 	}
 
 	@NotNull
-	private static Shape[] makeLeaf() {
-		return makeBezierLeaf();
-	}
+	private static Shape[] makeBezierPetal(Deque<PNumeric2.BezierPath> basicPaths) {
+//		QList<PNumeric2.BezierPath> basicShapes = makeBasicPaths();
+		PNumeric2.BezierPath rightPath = basicPaths.getFirst();
+		PNumeric2.BezierPath leftPath = basicPaths.getLast(); // Only 2 shapes in the list anyway
 
-	@NotNull
-	private static Shape[] makeBezierPetal() {
-		QList<PNumeric2.BezierPath> basicShapes = makeBasicPaths();
-		@NotNull
-		PNumeric2.BezierPath rightPath = basicShapes.get(0);
-		@NotNull
-		PNumeric2.BezierPath leftPath = basicShapes.get(1);
-
-		@NotNull
 		TileSegment segmentOne = TileSegment.buildFromPath(rightPath.getForwardPath(), rightPath.getStart(), rightPath.getEnd());
-		@NotNull
 		TileSegment segmentTwo = TileSegment.buildFromPath(rightPath.reverse().getForwardPath(), rightPath.getEnd(), rightPath.getStart());
-		@NotNull
 		TileSegment segmentThree = TileSegment.buildFromPath(leftPath.getForwardPath(), leftPath.getStart(), leftPath.getEnd());
-		@NotNull
 		TileSegment segmentFour = TileSegment.buildFromPath(leftPath.reverse().getForwardPath(), leftPath.getEnd(), leftPath.getStart());
 		segmentOne.printCurrentShape("one");
 		segmentTwo.printCurrentShape("two");
@@ -254,10 +223,10 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 	}
 
 	@NotNull
-	private static Shape[] makeBezierLeaf() {
-		QList<PNumeric2.BezierPath> basicShapes = makeBasicPaths();
-		PNumeric2.BezierPath rightPath = basicShapes.get(0);
-		PNumeric2.BezierPath leftPath = basicShapes.get(1);
+	private static Shape[] makeBezierLeaf(Deque<PNumeric2.BezierPath> basicPaths) {
+//		QList<PNumeric2.BezierPath> basicShapes = makeBasicPaths();
+		PNumeric2.BezierPath rightPath = basicPaths.getFirst();
+		PNumeric2.BezierPath leftPath = basicPaths.getLast(); // Only 2 shapes in the list anyway
 
 		TileSegment segmentOne = TileSegment.buildFromPath(rightPath.getForwardPath(), rightPath.getStart(), rightPath.getEnd());
 		TileSegment segmentTwo = TileSegment.buildFromPath(leftPath.getForwardPath(), leftPath.getStart(), leftPath.getEnd());
@@ -334,6 +303,14 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 
 	private final Shape[] allShapes;
 
+	/**
+	 * Create a new PenroseMasters, using the specified shapes, to be drawn at the specified point, on the specified size
+	 * of paper
+	 * @param shapes The two shapes to draw.
+	 * @param xDelta The x-offset, for drawing
+	 * @param yDelta The y-offset, for drawing
+	 * @param isLegalSize true for legal size paper, false otherwise.
+	 */
 	private PenroseMasters(@NotNull final Shape[] shapes, final int xDelta, final int yDelta, final boolean isLegalSize) {
 		super(new BorderLayout());
 		this.isLegalSize = isLegalSize;
@@ -354,12 +331,17 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 				System.out.println("Scale: " + scale);
 				AffineTransform scaleTransform = AffineTransform.getScaleInstance(scale, scale);
 
+				Stroke stroke = new BasicStroke((0.0720f)); // one mill thick.
+				g2.setStroke(stroke);
+				drawOrigin(g2);
+				g2.setColor(Color.black);
+
 				double bestAngle;
-				if (isLegalSize) {
+//				if (isLegalSize) {
 					bestAngle = Math.toDegrees(StrictMath.atan(8.5/14.0)); // ~31 degrees
-				} else {
-					bestAngle = 36.0;
-				}
+//				} else {
+//					bestAngle = 36.0;
+//				}
 				
 				System.out.printf("Best Angle: %6.3f%n", bestAngle);
 
@@ -377,9 +359,6 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 					Rectangle2D finalBounds = rotatedShape.getBounds2D();
 					System.out.printf("Size: %6.4f x %6.4f%n", finalBounds.getWidth(), finalBounds.getHeight());
 
-					Stroke stroke = new BasicStroke((0.0720f)); // one mill thick.
-					g2.setStroke(stroke);
-					g2.setColor(Color.black);
 					g2.draw(rotatedShape);
 
 //					// printing only:
@@ -401,8 +380,19 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 				Color savedColor = g2.getColor();
 				g2.setColor(Color.red);
 				int originSize = 10;
-				g2.drawLine(originSize, 0, -originSize, 0);
-				g2.drawLine(0, originSize, 0, -originSize);
+//				int originSize = originSize /2;
+//				g2.drawLine(originSize, 0, -originSize, 0);
+//				g2.drawLine(0, originSize, 0, -originSize);
+				
+				for (int ii=0; ii<10; ++ii) {
+					int x = 100*ii;
+					int y = x;
+					g2.drawLine(x, originSize, x, -originSize);
+					g2.drawLine(-x, originSize, -x, -originSize);
+					g2.drawLine(originSize, y, -originSize, y);
+					g2.drawLine(originSize, -y, -originSize, -y);
+				}
+				
 				g2.setColor(savedColor);
 			}
 
@@ -659,7 +649,8 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 
 	/**
 	 * This gives us an interface for a LinkedList that gives us the API of both List and Deque. This way,
-	 * I can avoid declaring my variables as LinkedList, and declare them as QList, which is an interface.
+	 * I can avoid declaring my variables as LinkedList, and declare them as QList, which is an interface, but I can
+	 * still call Deque.first() and .
 	 * @param <T>
 	 */
 	@SuppressWarnings({"ClassExtendsConcreteCollection", "CloneableClassWithoutClone"})
