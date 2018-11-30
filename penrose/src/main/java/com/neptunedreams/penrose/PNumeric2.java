@@ -81,7 +81,7 @@ public class PNumeric2 {
 	/**
 	 * Returns the point at x, alpha x<sup>2</sup>, where alpha is the tangent of 36¡ This is the small angle of the 
 	 * leaf shape, and half the small angle of the petal shape. (Actually, the angles of the rhombuses on which the
-	 * shapes are based.
+	 * shapes are based.)
 	 * @param x double value
 	 * @return The specified point
 	 */
@@ -90,16 +90,12 @@ public class PNumeric2 {
 	}
 
 	@NotNull
-	private static Point2D getPPrimeFromX(double x, AffineTransform t) {
-		Point2D pt = getPoint(x);
-		t.transform(pt, pt);
-		return pt;
-	}
-
 	private Point2D getPPrime(double x, AffineTransform transform) {
 		//noinspection UseOfSystemOutOrSystemErr
 		assert !Double.isNaN(x);
-		return getPPrimeFromX(x, transform);
+		Point2D pt = getPoint(x);
+		transform.transform(pt, pt);
+		return pt;
 	}
 	
 
@@ -127,12 +123,8 @@ public class PNumeric2 {
 				g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 				AffineTransform savedTransform = g2.getTransform();
 
-//				System.out.println("G before: " + ((Graphics2D) g).getTransform());
 				Dimension size = new Dimension((105 * 72) / 10, 8 * 72);
 				g.translate(size.width / 2, size.height / 10);
-//				System.out.println("G After:  " + ((Graphics2D) g).getTransform());
-//				System.out.printf("Translated %d x %d%n", size.width / 2, size.height / 10);
-//				System.out.printf("* X Range from %7.4f to %7.4f%n", penroseNumeric.xStart, penroseNumeric.xEnd);
 				double scale = 300;
 				((Graphics2D) g).scale(scale, scale);
 
@@ -142,20 +134,15 @@ public class PNumeric2 {
 				Path2D t1Path = factory.makePath(penroseNumeric.tr1, penroseNumeric.xStart, penroseNumeric.xEnd);
 
 				Point2D theMidPoint = penroseNumeric.midPoint;
-//				System.out.printf("MidPoint: (%7.4f, %7.4f)%n", midPoint.getX(), midPoint.getY());
 
-				Path2D sPath1 = factory.makePath(penroseNumeric.getT(), penroseNumeric.xStart, penroseNumeric.xMid);
-				Path2D sPath2 = factory.makePath(penroseNumeric.getT(), penroseNumeric.xMid, penroseNumeric.xEnd);
+				Path2D sPath1 = factory.makePath(penroseNumeric.rawTransform, penroseNumeric.xStart, penroseNumeric.xMid);
+				Path2D sPath2 = factory.makePath(penroseNumeric.rawTransform, penroseNumeric.xMid, penroseNumeric.xEnd);
 
 				g2.setStroke(new BasicStroke((float)(1.0/scale)));
 				g2.setColor(Color.ORANGE);
 				g2.draw(t0Path);
-//				g2.setColor(Color.orange);
-//				g2.draw(t1Path);
 				g2.setColor(Color.red);
 				g2.draw(t1Path);
-//				g2.setColor(Color.green);
-//				g2.draw(sPath);
 
 				g2.setColor(Color.green);
 				g2.draw(sPath1);
@@ -180,9 +167,6 @@ public class PNumeric2 {
 				g2.draw(line1);
 				g2.draw(line2);
 
-//				Shape circle = new Ellipse2D.Double(0.0, 0.0, 5.0, 5.0);
-//				g2.setColor(Color.green);
-//				g2.draw(circle);
 				g2.setTransform(savedTransform);
 			}
 
@@ -201,17 +185,6 @@ public class PNumeric2 {
 		penroseNumeric.makeLeftPath();
 	}
 	
-//	private static class MappedFactory extends PathFactory {
-//		private final PNumeric2 p2;
-//		
-//		MappedFactory(PNumeric2 p) { p2 = p; }
-//		@Override
-//		double transformX(double x) { return p2.getMappedX(x); }
-//
-//		@Override
-//		double getY(double x) { return p2.getYFromMappedX(x); }
-//	}
-
 	public interface PathFactory {
 		Path2D makePath(AffineTransform transform);
 		Path2D makePath(AffineTransform transform, double xStart, double xEnd);
@@ -227,8 +200,6 @@ public class PNumeric2 {
 		@Override
 		@NotNull
 		public Path2D makePath(AffineTransform transform, double xStart, double xEnd) {
-//			AffineTransform t = (transform == null) ? AffineTransform.getScaleInstance(1.0, 1.0) : transform;
-			//			Point2D start = new Point2D.Double(transformX(-1.0), getY(-1.0));
 			Point2D start = getPoint(xStart);
 			transform.transform(start, start);
 			Path2D path = new Path2D.Double();
@@ -237,8 +208,6 @@ public class PNumeric2 {
 			double deltaX = xEnd - xStart;
 			for (int ii = 1; ii <= intervals; ++ii) {
 				double x = ((deltaX * ii) / intervals) + xStart;
-//				double tX = transformX(x);
-//				double y = getY(x);
 				Point2D pt = getPoint(x);
 				transform.transform(pt, pt);
 				path.lineTo(pt.getX(), pt.getY());
@@ -301,7 +270,7 @@ public class PNumeric2 {
 		 * the same yPrime that this x produces.
 		 */
 		final Function findMatchingX = x -> {
-			double leftYPrime = getPPrime(x, getT()).getY();
+			double leftYPrime = getPPrime(x, rawTransform).getY();
 			return interpolate(findYPrime, leftYPrime, -x);
 		};
 
@@ -316,10 +285,8 @@ public class PNumeric2 {
 		midPoint = getPPrime(mid, rawTransform);
 
 		// Calculate the translation.
-//		System.out.printf("MidPoint: %s%n", toFormat("%7.4f", midPoint));
 		assert fuzzyEquals(midPrime, midPoint.getX()) : String.format("Mid Mismatch: %30.27f != %30.27f", midPrime, midPoint.getX());
 
-//		System.out.printf("MidPrime: (%7.4f, %7.4f) [%7.4f]%n", midPoint.getX(), midPoint.getY(), midPrime);
 		tr0 = rawTransform;
 		rawTransform = AffineTransform.getTranslateInstance(-midPoint.getX(), -midPoint.getY());
 		rawTransform.concatenate(tr0);
@@ -330,37 +297,19 @@ public class PNumeric2 {
 		double xp2 = pp2.getX();
 		double scale = Math.abs(2 / (xp2 - xp1));
 
-//		System.out.printf("Revised Range: %s to %s %n", toFormat("%7.4f", pp1), toFormat("%7.4f", pp2));
-
-//		System.out.printf("X  Range: %7.4f Ñ %7.4f (delta = %7.4f)%n", x1, x2, x2 - x1);
-//		System.out.printf("X' Range: %7.4f Ñ %7.4f (delta = %7.4f)%n", xp1, xp2, xp2 - xp1);
-//		System.out.printf("Scale: %17.14f%n", scale);
-
 		tr1 = rawTransform;
 		rawTransform = AffineTransform.getScaleInstance(scale, scale);
 		rawTransform.concatenate(tr1);
 		rawTransform = tr1;
-//		rawTransform = transform;
-//		rawInverse = invert(transform);
-//
+
 		pp1 = getPPrime(x1, rawTransform);
 		pp2 = getPPrime(x2, rawTransform);
 		xp1 = pp1.getX();
 		xp2 = pp2.getX();
-//		scale = 2 / (xp2 - xp1);
-//		System.out.printf("X  Range: %7.4f Ñ %7.4f (delta = %7.4f)%n", x1, x2, x2 - x1);
-//		System.out.printf("X' Range: %7.4f Ñ %7.4f (delta = %7.4f)%n", xp1, xp2, xp2 - xp1);
-//		System.out.printf("Scale: %17.14f%n", scale);
 		xStart = x1;
 		xEnd = x2;
 		xMid = reverseX((xp1 + xp2)/2.0, 0.0, rawTransform);
 
-//		System.out.printf("Start: %7.4f%nMid:   %7.4f%nEnd:   %7.4f%n", xStart, xMid, xEnd);
-	}
-
-	@NotNull
-	AffineTransform getT() {
-		return rawTransform;
 	}
 
 	@NotNull
@@ -380,9 +329,9 @@ public class PNumeric2 {
 	 * @param xPrime A number in the range from -1 to 1;
 	 * @return The value of y, after mapping the input to a range matching the x1 and x2 members of this instance.
 	 */
-	double getYFromMappedX(double xPrime, AffineTransform transform) {
-		double x = reverseX(xPrime, xPrime, transform);
-		return getPPrime(x, transform).getY();
+	double getYFromMappedX(double xPrime) {
+		double x = reverseX(xPrime, xPrime, rawTransform);
+		return getPPrime(x, rawTransform).getY();
 	}
 
 	private double ratio(double x1, Function f, AffineTransform transform) {
@@ -396,7 +345,6 @@ public class PNumeric2 {
 		double xPMid = (pp1.getX() + pp2.getX()) / 2;
 		
 		Point2D pPMid = getPPrime(reverseX(xPMid, xPMid, transform), transform);
-//		double yPMid = yPrime(reverseX(xPMid, xPMid));
 		double deltaY = pp2.getY() - pPMid.getY();
 		return Math.abs(deltaY/(pp2.getX()-xPMid));
 	}
@@ -506,12 +454,9 @@ public class PNumeric2 {
 
 		@NotNull
 		BezierPoints reverse() {
-//			Shape copy = new Path2D.Double(shape);
 			AffineTransform flip = AffineTransform.getRotateInstance(Math.PI);
-//			copy.
 			Point2D delta = getVector(getP2(), getP1());
 			flip.translate(delta.getX(), delta.getY());
-//			System.out.printf("* Flipping vector: (%7.4f, %7.4f)%n", delta.getX(), delta.getY());
 
 			Point2D pp1 = new Point2D.Double();
 			flip.transform(getP2(), pp1);
@@ -549,19 +494,11 @@ public class PNumeric2 {
 		
 		BezierPath(BezierPoints rawPoints) {
 			points = rawPoints;
-//			System.out.printf("RawPoints:   %n  %s%n  %s%n  %s%n", toFormat("%7.4f", rawPoints.getP1()), toFormat("%7.4f", rawPoints.getCtl()), toFormat("%7.4f", rawPoints.getP2()));
-//			start = new Point2D.Double();
-//			rawTransform.transform(rawPoints.getP1(), start);
 			start = rawPoints.getP1();
 			
-//			end = new Point2D.Double();
-//			rawTransform.transform(rawPoints.getP2(), end);
 			end = rawPoints.getP2();
 
-//			ctl = new Point2D.Double();
-//			rawTransform.transform(rawPoints.getCtl(), ctl);
 			ctl = rawPoints.getCtl();
-//			System.out.printf("transformed: %n  %s%n  %s%n  %s%n", toFormat("%7.4f", start), toFormat("%7.4f", ctl), toFormat("%7.4f", end));
 
 			forwardPath = new Path2D.Double();
 			forwardPath.moveTo(start.getX(), start.getY());
@@ -572,10 +509,6 @@ public class PNumeric2 {
 		
 		@NotNull
 		Path2D getForwardPath() { return forwardPath; }
-
-//		public Path2D getReversePath() {
-//			return reversePath;
-//		}
 
 		public double getLength() {
 			return length;
@@ -589,7 +522,6 @@ public class PNumeric2 {
 
 		@NotNull
 		BezierPath reverse() {
-//			System.out.println("* Reverse:");
 			return new BezierPath(points.reverse());
 		}
 	}
