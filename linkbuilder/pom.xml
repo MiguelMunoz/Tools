@@ -41,6 +41,15 @@
 					<outputDirectory>${user.home}/Documents/NewHome/Home7/jars</outputDirectory>
 				</configuration>
 			</plugin>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.0</version>
+				<configuration>
+					<source>${jdk-version}</source>
+					<target>${jdk-version}</target>
+					<release>${jdk-version}</release>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 </project>
