@@ -7,6 +7,11 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.StringTokenizer;
+import java.util.TreeSet;
+import java.util.prefs.Preferences;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JButton;
@@ -23,6 +28,7 @@ import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SpinnerNumberModel;
@@ -88,6 +94,7 @@ public final class LinkBuilder extends JPanel {
     tabbedPane.addTab("Link", makeMainTab());
     Font plainFont = this.getFont(Font.PLAIN, 12, "Verdana", "Arial", "Helvetica", "sans-serif");
     tabbedPane.addTab("Clean Up", makeCleanupTab());
+    tabbedPane.addTab("Tags", new Tags());
     add(tabbedPane, BorderLayout.CENTER);
     textView.setFont(plainFont);
     linkView.setFont(plainFont);
@@ -271,7 +278,7 @@ public final class LinkBuilder extends JPanel {
 
 	  // Use this one for java 10+
 	  //noinspection MagicConstant
-	  final KeyStroke ks = KeyStroke.getKeyStroke('L', Toolkit.getDefaultToolkit().getMenuShortcutKeyMask());
+	  final KeyStroke ks = KeyStroke.getKeyStroke('L', Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx());
 	  linkAction.putValue(Action.ACCELERATOR_KEY, ks);
     linkAction.putValue(Action.NAME, CREATE_LINK_AND_COPY);
     linkAction.setEnabled(false);
@@ -388,5 +395,102 @@ public final class LinkBuilder extends JPanel {
     wrapped.setLineWrap(true);
     wrapped.setWrapStyleWord(true);
     return new JScrollPane(wrapped, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+  }
+  
+  private static class Tags extends JPanel {
+    private static final String TAGS = "Tags";
+    private final Preferences prefs = Preferences.userNodeForPackage(LinkBuilder.class);
+    private final JTextField textField = new JTextField();
+    private JPanel tagPanel = new JPanel(new GridLayout(0, 1));
+    @SuppressWarnings("CloneableClassWithoutClone")
+    private final Set<String> tags = new TreeSet<>() {
+      @Override
+      public boolean add(final String s) {
+        final boolean added = super.add(s);
+        prefs.put(TAGS, writeTags());
+        return added;
+      }
+
+      @Override
+      public boolean remove(final Object o) {
+        final boolean removed = super.remove(o);
+        prefs.put("Tags", writeTags());
+        return removed;
+      }
+    };
+
+    Tags() {
+	    super(new BorderLayout());
+	    readTags(prefs.get(TAGS, ""));
+	    add(makeToolBar(), BorderLayout.PAGE_END);
+	    add(textField, BorderLayout.PAGE_START);
+	    JPanel spacingPanel = new JPanel(new BorderLayout());
+	    spacingPanel.add(tagPanel, BorderLayout.PAGE_START);
+	    add(spacingPanel, BorderLayout.CENTER);
+	    for (String s: tags) {
+	      tagPanel.add(new TagButton(s));
+      }
+    }
+    
+    private JToolBar makeToolBar() {
+	    JToolBar toolBar = new JToolBar();
+	    JButton addButton = new JButton("+");
+	    addButton.addActionListener(e -> doAdd());
+	    toolBar.add(addButton);
+	    return toolBar;
+    }
+    
+    private void doAdd() {
+      String newTag = JOptionPane.showInputDialog(tagPanel, "Tag:", "").trim();
+      if (!newTag.isEmpty()) {
+        tags.add(newTag);
+        tagPanel.add(new TagButton(newTag));
+      }
+    }
+    
+    private String writeTags() {
+      StringBuilder builder = new StringBuilder();
+      Iterator<String> itr = tags.iterator();
+      if (itr.hasNext()) {
+        builder.append(itr.next());
+        while (itr.hasNext()) {
+          builder.append('|').append(itr.next());
+        }
+      }
+      return builder.toString();
+    }
+    
+    private void readTags(String tagString) {
+      tags.clear();
+      StringTokenizer tk = new StringTokenizer(tagString, "|");
+      while (tk.hasMoreTokens()) {
+        tags.add(tk.nextToken());
+      }
+    }
+    
+    private void doTag(String tag) {
+      int spaceSpot = tag.indexOf(' ');
+      String result;
+      final String content = textField.getText().trim();
+      if (spaceSpot < 0) {
+        result = String.format("<%s>%s</%s>", tag, content, tag);
+      } else {
+        String name = tag.substring(0, spaceSpot);
+        String attributes = tag.substring(++spaceSpot);
+        result = String.format("<%s %s>%s</%s>", name, attributes, content, name);
+      }
+      StringSelection stringSelection = new StringSelection(result);
+      Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+      clipboard.setContents(stringSelection, stringSelection);
+    }
+
+    private class TagButton extends JButton {
+      private final String tagValue;
+      TagButton(String value) {
+        super(value);
+        tagValue = value.trim();
+        addActionListener(e -> doTag(tagValue));
+      }
+    }
   }
 }
