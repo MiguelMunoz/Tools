@@ -11,6 +11,13 @@
 
 	<artifactId>penrose</artifactId>
 
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<jdk-version>10</jdk-version>
+		<maven.compiler.source>${jdk-version}</maven.compiler.source>
+		<maven.compiler.target>${jdk-version}</maven.compiler.target>
+	</properties>
+
 	<dependencies>
 		<!-- https://mvnrepository.com/artifact/com.intellij/annotations -->
 		<dependency>
@@ -26,4 +33,35 @@
 		</dependency>
 	</dependencies>
 
+	<build>
+		<plugins>
+			<!--This creates an executable jar file.-->
+			<!--<plugin>-->
+				<!--<groupId>org.apache.maven.plugins</groupId>-->
+				<!--<artifactId>maven-jar-plugin</artifactId>-->
+				<!--<version>2.6</version>-->
+				<!--<configuration>-->
+					<!--&lt;!&ndash;<detail>&ndash;&gt;-->
+					<!--&lt;!&ndash;<derby.system.home>${user.home}/.skeleton</derby.system.home>&ndash;&gt;-->
+					<!--&lt;!&ndash;</detail>&ndash;&gt;-->
+					<!--<archive>-->
+						<!--<manifest>-->
+							<!--<mainClass>com.neptunedreams.gui.link.LinkBuilder</mainClass>-->
+						<!--</manifest>-->
+					<!--</archive>-->
+					<!--<finalName>LinkBuilder</finalName>-->
+					<!--<outputDirectory>${user.home}/Documents/NewHome/Home7/jars</outputDirectory>-->
+				<!--</configuration>-->
+			<!--</plugin>-->
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.0</version>
+				<configuration>
+					<source>${jdk-version}</source>
+					<target>${jdk-version}</target>
+					<release>${jdk-version}</release>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
 </project>
