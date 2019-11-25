@@ -1,19 +1,9 @@
 package com.neptunedreams.penrose;
 
-import java.awt.BasicStroke;
-import java.awt.Canvas;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
 import java.awt.geom.Point2D;
 import javax.annotation.ParametersAreNonnullByDefault;
-import javax.swing.JFrame;
-import javax.swing.WindowConstants;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -70,15 +60,15 @@ import org.jetbrains.annotations.NotNull;
  *
  * @author Miguel Mu\u00f1oz
  */
-@SuppressWarnings({"HardCodedStringLiteral", "MagicNumber", "AccessingNonPublicFieldOfAnotherObject", "MagicCharacter", "StringConcatenation", "UseOfSystemOutOrSystemErr"})
+@SuppressWarnings({"HardCodedStringLiteral", "MagicNumber", "AccessingNonPublicFieldOfAnotherObject", "MagicCharacter", "StringConcatenation", "UseOfSystemOutOrSystemErr", "FieldCanBeLocal"})
 @ParametersAreNonnullByDefault
-public class PNumeric2 {
+class PNumeric2 {
 	// Alpha is really an arbitrary number, which determines the size of the parabola. I settled on this value because
 	// I was also using it for another constant which specified the smaller angle of the bigger rhombus.
 	private static final double alpha = StrictMath.tan(Math.toRadians(36));
 
 	@NotNull
-	private AffineTransform rawTransform = AffineTransform.getScaleInstance(1.0, 1.0);
+	private AffineTransform rawTransform; // = AffineTransform.getScaleInstance(1.0, 1.0);
 
 	/**
 	 * Returns the point at x, alpha x<sup>2</sup>, where alpha is the tangent of 36\u00b0 This is the small angle of the 
@@ -101,150 +91,150 @@ public class PNumeric2 {
 	}
 	
 
-	public static void main(String[] args) {
-		
-		JFrame frame = new JFrame("PenroseNumeric");
-		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-		double theta = 5.0; //	angle of rotation, degrees 
-
-
-		if (args.length > 0) {
-			try {
-				theta = Double.valueOf(args[0]);
-			} catch (NumberFormatException e) {
-				System.out.printf("Error reading value `%s`: %s. Using default value of %3.1f%n", args[0], e.getMessage(), theta);
-			}
-		}
-		final PNumeric2 penroseNumeric = new PNumeric2(theta);
-		Canvas canvas = new Canvas() {
-			@Override
-			public void paint(Graphics g) {
-				Graphics2D g2 = (Graphics2D) g;
-				g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-				g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
-				g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-				AffineTransform savedTransform = g2.getTransform();
-
-				Dimension size = new Dimension((105 * 72) / 10, 8 * 72);
-				g.translate(size.width / 2, size.height / 10);
-				double scale = 300;
-				((Graphics2D) g).scale(scale, scale);
-
-				PathFactory factory = new BezierPathFactory();
-				Path2D t0Path = factory.makePath(penroseNumeric.tr0);
-
-				Path2D t1Path = factory.makePath(penroseNumeric.tr1, penroseNumeric.xStart, penroseNumeric.xEnd);
-
-				Point2D theMidPoint = penroseNumeric.midPoint;
-
-				Path2D sPath1 = factory.makePath(penroseNumeric.rawTransform, penroseNumeric.xStart, penroseNumeric.xMid);
-				Path2D sPath2 = factory.makePath(penroseNumeric.rawTransform, penroseNumeric.xMid, penroseNumeric.xEnd);
-
-				g2.setStroke(new BasicStroke((float)(1.0/scale)));
-				g2.setColor(Color.ORANGE);
-				g2.draw(t0Path);
-				g2.setColor(Color.red);
-				g2.draw(t1Path);
-
-				g2.setColor(Color.green);
-				g2.draw(sPath1);
-				g2.setColor(Color.blue);
-				g2.draw(sPath2);
-
-				// Draw the axes
-				g2.setColor(Color.lightGray);
-				g2.drawLine(-1, 0, 1, 0);
-				g2.drawLine(0, 0, 0, 1);
-
-				// draw the mid Point
-				double dst = 0.025;
-				Point2D loD1 = new Point2D.Double(theMidPoint.getX() - dst, theMidPoint.getY() - dst);
-				Point2D hiD1 = new Point2D.Double(theMidPoint.getX() + dst, theMidPoint.getY() + dst);
-				Point2D loD2 = new Point2D.Double(theMidPoint.getX() - dst, theMidPoint.getY() + dst);
-				Point2D hiD2 = new Point2D.Double(theMidPoint.getX() + dst, theMidPoint.getY() - dst);
-
-				Line2D line1 = new Line2D.Double(loD1, hiD1);
-				Line2D line2 = new Line2D.Double(loD2, hiD2);
-				g2.setColor(Color.gray);
-				g2.draw(line1);
-				g2.draw(line2);
-
-				g2.setTransform(savedTransform);
-			}
-
-			@Override
-			public void update(Graphics g) {
-				paint(g);
-			}
-		};
-		canvas.setMinimumSize(new Dimension(100, 100));
-		canvas.setPreferredSize(new Dimension(1400, 1000));
-		frame.add(canvas);
-		frame.pack();
-		frame.setVisible(true);
-
-		penroseNumeric.makeRightPath();
-		penroseNumeric.makeLeftPath();
-	}
+//	public static void main(String[] args) {
+//		
+//		JFrame frame = new JFrame("PenroseNumeric");
+//		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+//		double theta = 5.0; //	angle of rotation, degrees 
+//
+//
+//		if (args.length > 0) {
+//			try {
+//				theta = Double.valueOf(args[0]);
+//			} catch (NumberFormatException e) {
+//				System.out.printf("Error reading value `%s`: %s. Using default value of %3.1f%n", args[0], e.getMessage(), theta);
+//			}
+//		}
+//		final PNumeric2 penroseNumeric = new PNumeric2(theta);
+//		Canvas canvas = new Canvas() {
+//			@Override
+//			public void paint(Graphics g) {
+//				Graphics2D g2 = (Graphics2D) g;
+//				g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+//				g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+//				g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+//				AffineTransform savedTransform = g2.getTransform();
+//
+//				Dimension size = new Dimension((105 * 72) / 10, 8 * 72);
+//				g.translate(size.width / 2, size.height / 10);
+//				double scale = 300;
+//				((Graphics2D) g).scale(scale, scale);
+//
+//				PathFactory factory = new BezierPathFactory();
+//				Path2D t0Path = factory.makePath(penroseNumeric.tr0);
+//
+//				Path2D t1Path = factory.makePath(penroseNumeric.tr1, penroseNumeric.xStart, penroseNumeric.xEnd);
+//
+//				Point2D theMidPoint = penroseNumeric.midPoint;
+//
+//				Path2D sPath1 = factory.makePath(penroseNumeric.rawTransform, penroseNumeric.xStart, penroseNumeric.xMid);
+//				Path2D sPath2 = factory.makePath(penroseNumeric.rawTransform, penroseNumeric.xMid, penroseNumeric.xEnd);
+//
+//				g2.setStroke(new BasicStroke((float)(1.0/scale)));
+//				g2.setColor(Color.ORANGE);
+//				g2.draw(t0Path);
+//				g2.setColor(Color.red);
+//				g2.draw(t1Path);
+//
+//				g2.setColor(Color.green);
+//				g2.draw(sPath1);
+//				g2.setColor(Color.blue);
+//				g2.draw(sPath2);
+//
+//				// Draw the axes
+//				g2.setColor(Color.lightGray);
+//				g2.drawLine(-1, 0, 1, 0);
+//				g2.drawLine(0, 0, 0, 1);
+//
+//				// draw the mid Point
+//				double dst = 0.025;
+//				Point2D loD1 = new Point2D.Double(theMidPoint.getX() - dst, theMidPoint.getY() - dst);
+//				Point2D hiD1 = new Point2D.Double(theMidPoint.getX() + dst, theMidPoint.getY() + dst);
+//				Point2D loD2 = new Point2D.Double(theMidPoint.getX() - dst, theMidPoint.getY() + dst);
+//				Point2D hiD2 = new Point2D.Double(theMidPoint.getX() + dst, theMidPoint.getY() - dst);
+//
+//				Line2D line1 = new Line2D.Double(loD1, hiD1);
+//				Line2D line2 = new Line2D.Double(loD2, hiD2);
+//				g2.setColor(Color.gray);
+//				g2.draw(line1);
+//				g2.draw(line2);
+//
+//				g2.setTransform(savedTransform);
+//			}
+//
+//			@Override
+//			public void update(Graphics g) {
+//				paint(g);
+//			}
+//		};
+//		canvas.setMinimumSize(new Dimension(100, 100));
+//		canvas.setPreferredSize(new Dimension(1400, 1000));
+//		frame.add(canvas);
+//		frame.pack();
+//		frame.setVisible(true);
+//
+//		penroseNumeric.makeRightPath();
+//		penroseNumeric.makeLeftPath();
+//	}
 	
-	public interface PathFactory {
-		Path2D makePath(AffineTransform transform);
-		Path2D makePath(AffineTransform transform, double xStart, double xEnd);
-	}
-
-	@SuppressWarnings("UnusedDeclaration")
-	private static class PathFactoryImpl implements PathFactory {
-		@Override
-		public Path2D makePath(AffineTransform transform) {
-			return makePath(transform, -1.0, 1.0);
-		}
-		
-		@Override
-		@NotNull
-		public Path2D makePath(AffineTransform transform, double xStart, double xEnd) {
-			Point2D start = getPoint(xStart);
-			transform.transform(start, start);
-			Path2D path = new Path2D.Double();
-			path.moveTo(start.getX(), start.getY());
-			int intervals = 16;
-			double deltaX = xEnd - xStart;
-			for (int ii = 1; ii <= intervals; ++ii) {
-				double x = ((deltaX * ii) / intervals) + xStart;
-				Point2D pt = getPoint(x);
-				transform.transform(pt, pt);
-				path.lineTo(pt.getX(), pt.getY());
-			}
-			return path;
-		}
-	}
+//	public interface PathFactory {
+//		Path2D makePath(AffineTransform transform);
+//		Path2D makePath(AffineTransform transform, double xStart, double xEnd);
+//	}
 
 //	@SuppressWarnings("UnusedDeclaration")
-	private static class BezierPathFactory implements PathFactory {
-		@Override
-		public Path2D makePath(AffineTransform transform) {
-			return makePath(transform, -1.0, 1.0);
-		}
+//	private static class PathFactoryImpl implements PathFactory {
+//		@Override
+//		public Path2D makePath(AffineTransform transform) {
+//			return makePath(transform, -1.0, 1.0);
+//		}
+//		
+//		@Override
+//		@NotNull
+//		public Path2D makePath(AffineTransform transform, double xStart, double xEnd) {
+//			Point2D start = getPoint(xStart);
+//			transform.transform(start, start);
+//			Path2D path = new Path2D.Double();
+//			path.moveTo(start.getX(), start.getY());
+//			int intervals = 16;
+//			double deltaX = xEnd - xStart;
+//			for (int ii = 1; ii <= intervals; ++ii) {
+//				double x = ((deltaX * ii) / intervals) + xStart;
+//				Point2D pt = getPoint(x);
+//				transform.transform(pt, pt);
+//				path.lineTo(pt.getX(), pt.getY());
+//			}
+//			return path;
+//		}
+//	}
 
-		@Override
-		@NotNull
-		public Path2D makePath(AffineTransform transform, double xStart, double xEnd) {
-			BezierPoints points = new BezierPoints(xStart, xEnd, alpha, 0, 0, transform);
-			Point2D start = new Point2D.Double();
-			transform.transform(points.getP1(), start);
-
-			Path2D path = new Path2D.Double();
-			path.moveTo(start.getX(), start.getY());
-
-			Point2D ctl = new Point2D.Double();
-			transform.transform(points.getCtl(), ctl);
-
-			Point2D end = new Point2D.Double();
-			transform.transform(points.getP2(), end);
-
-			path.quadTo(ctl.getX(), ctl.getY(), end.getX(), end.getY());
-			return path;
-		}
-	}
+////	@SuppressWarnings("UnusedDeclaration")
+//	private static class BezierPathFactory implements PathFactory {
+//		@Override
+//		public Path2D makePath(AffineTransform transform) {
+//			return makePath(transform, -1.0, 1.0);
+//		}
+//
+//		@Override
+//		@NotNull
+//		public Path2D makePath(AffineTransform transform, double xStart, double xEnd) {
+//			BezierPoints points = new BezierPoints(xStart, xEnd, alpha, 0, 0, transform);
+//			Point2D start = new Point2D.Double();
+//			transform.transform(points.getP1(), start);
+//
+//			Path2D path = new Path2D.Double();
+//			path.moveTo(start.getX(), start.getY());
+//
+//			Point2D ctl = new Point2D.Double();
+//			transform.transform(points.getCtl(), ctl);
+//
+//			Point2D end = new Point2D.Double();
+//			transform.transform(points.getP2(), end);
+//
+//			path.quadTo(ctl.getX(), ctl.getY(), end.getX(), end.getY());
+//			return path;
+//		}
+//	}
 	
 
 	@NotNull
@@ -254,6 +244,7 @@ public class PNumeric2 {
 	private final double xStart;
 	private final double xMid;
 	private final double xEnd;
+	private final double length;
 	@NotNull
 	private final Point2D midPoint;
 
@@ -312,30 +303,31 @@ public class PNumeric2 {
 		xStart = x1;
 		xEnd = x2;
 		xMid = reverseX((xp1 + xp2)/2.0, 0.0, rawTransform);
+		length = 0;
 	}
 
-	@NotNull
-	static String toFormat(String fpFormat, Point2D point) {
-		String format = '(' + fpFormat + ", " + fpFormat + ')';
-		return String.format(format, point.getX(), point.getY());
-	}
+//	@NotNull
+//	static String toFormat(String fpFormat, Point2D point) {
+//		String format = '(' + fpFormat + ", " + fpFormat + ')';
+//		return String.format(format, point.getX(), point.getY());
+//	}
 	
-	/**
-	 * Gets the value of y from a "mapped" value of x. This class takes x values in the range of (-1, 1) and
-	 * maps them to values from x1 to x2, then determines the Y value for the mapped X value. Then it "unMaps" the y 
-	 * value before returning it.
-	 * <p>
-	 * TODO: Rewrite this to use a scaled and rotated transform. Verify that it returns the same results. 
-	 * TODO  Then use the transform to return transformed bezier control points. (YMultiplier = 1/XMultiplier,
-	 * TODO  so this looks feasible.
-	 * @param xPrime A number in the range from -1 to 1;
-	 * @return The value of y, after mapping the input to a range matching the x1 and x2 members of this instance.
-	 */
-	double getYFromMappedX(double xPrime) {
-		double x = reverseX(xPrime, xPrime, rawTransform);
-		return getPPrime(x, rawTransform).getY();
-	}
-
+//	/**
+//	 * Gets the value of y from a "mapped" value of x. This class takes x values in the range of (-1, 1) and
+//	 * maps them to values from x1 to x2, then determines the Y value for the mapped X value. Then it "unMaps" the y 
+//	 * value before returning it.
+//	 * <p>
+//	 * TODO: Rewrite this to use a scaled and rotated transform. Verify that it returns the same results. 
+//	 * TODO  Then use the transform to return transformed bezier control points. (YMultiplier = 1/XMultiplier,
+//	 * TODO  so this looks feasible.
+//	 * @param xPrime A number in the range from -1 to 1;
+//	 * @return The value of y, after mapping the input to a range matching the x1 and x2 members of this instance.
+//	 */
+//	double getYFromMappedX(double xPrime) {
+//		double x = reverseX(xPrime, xPrime, rawTransform);
+//		return getPPrime(x, rawTransform).getY();
+//	}
+//
 	private double ratio(double x1, Function f, AffineTransform transform) {
 		double x2 = f.f(x1);
 		Point2D pp1 = getPPrime(x1, transform);
@@ -417,6 +409,8 @@ public class PNumeric2 {
 		private final Point2D p2;
 		@NotNull
 		private final Point2D ctl;
+		
+		private final double length;
 
 		/**
 		 * Generate control points for a bezier parabola segment from x1 to x2, with formula y = AX<sup>2</sup> + Bx + C.
@@ -434,12 +428,14 @@ public class PNumeric2 {
 			t.transform(p1, p1);
 			t.transform(p2, p2);
 			t.transform(ctl, ctl);
+			length = p1.distance(p2);
 		}
 
 		private BezierPoints(Point2D p1, Point2D ctl, Point2D p2) {
 			this.p1 = p1;
 			this.ctl = ctl;
 			this.p2 = p2;
+			length = p1.distance(p2);
 		}
 
 		private double f(double x, double A, double B, double C) { return (A * x * x) + (B * x) + C; }
@@ -455,7 +451,7 @@ public class PNumeric2 {
 		@NotNull
 		Point2D getCtl() { return ctl; }
 
-		public double getLength() { return p2.distance(p1); }
+		public double getLength() { return length; }
 
 		@NotNull
 		BezierPoints reverse() {

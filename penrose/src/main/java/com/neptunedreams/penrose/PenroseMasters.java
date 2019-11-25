@@ -10,8 +10,6 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.Stroke;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
@@ -76,14 +74,12 @@ import org.jetbrains.annotations.NotNull;
  *   C=((x<sub>1</sub>+x<sub>2</sub>)/2, (f(x<sub>1</sub>)+f'(x<sub>1</sub>)(x<sub>1</sub>+x<sub>2</sub>)/2)) is the 
  * control point for the quadratic Bezier curve.
  * 
- * <pre> <!-- Meant to be seen in JavaDocs. Don't mess with the spacking.) -->
+ * <pre> <!-- Meant to be seen in JavaDocs. Don't mess with the spacing.) -->
  *        x<sub>1</sub> + x<sub>2</sub>                   x<sub>2</sub> - x<sub>1</sub>
  *   C =  -------, f(x<sub>1</sub>) + f`(x<sub>1</sub>) ¥ -------
  *           2                         2
  * </pre>
- * <p>Now you can convert this quadratic Bezier curve to a cubic Bezier curve by define the two control points as:
- * $C<sub>1</sub>=\frac{2}{3}C+\frac{1}{3}P<sub>1</sub>$ and
- * $C<sub>2</sub>=\frac{2}{3}C+\frac{1}{3}P<sub>2</sub>$. 
+ * <p>Now you can convert this quadratic Bezier curve to a cubic Bezier curve by defining two new control points.
  * <br>(This method does not use that last step. I don't know what the advantage is, if any. Speed is not an issue.)
  * 
  * <p>Created by IntelliJ IDEA.
@@ -137,9 +133,10 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		makeDataFromAngle(theta);
 
 		System.out.println("Petal:");
-		Shape[] petalShapes = makeBezierPetal(basicPaths);
+		final ClosedShape petalShape = makeBezierPetal(basicPaths);
+		Shape petalShapes = petalShape.getPath();
 		JFrame frame = new JFrame(String.format("Penrose Petal: %3.1f degrees", theta));
-		PenroseMasters pm = new PenroseMasters(petalShapes, 150, 120, false, drawOrigin, petalSupplier);
+		PenroseMasters pm = new PenroseMasters(petalShapes, 150, 0, false, drawOrigin, petalSupplier);
 		frame.add(pm);
 		frame.pack();
 		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -147,14 +144,15 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		
 		pm.installToolbar(frame);
 		frame.setVisible(true);
-		assert petalShapes[0] != null;
-		printDataPoints(petalShapes[0]);
+		assert petalShapes != null;
+		printDataPoints(petalShapes);
 
 		System.out.println("\nLeaf:");
-		
-		Shape[] leafShapes = makeBezierLeaf(basicPaths);
+
+		final ClosedShape leafShape = makeBezierLeaf(basicPaths);
+		Shape leafShapes = leafShape.getPath();
 		frame = new JFrame(String.format("Penrose Leaf: %3.1f degrees", theta));
-		pm = new PenroseMasters(leafShapes, 150, 120, true, drawOrigin, leafSupplier);
+		pm = new PenroseMasters(leafShapes, 200, 120, true, drawOrigin, leafSupplier);
 		frame.add(pm);
 		frame.pack();
 		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -162,8 +160,8 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		
 		pm.installToolbar(frame);
 		frame.setVisible(true);
-		assert leafShapes[0] != null;
-		printDataPoints(leafShapes[0]);
+		assert leafShapes != null;
+		printDataPoints(leafShapes);
 	}
 	
 	private static void makeDataFromAngle(double angleDegrees) {
@@ -172,20 +170,15 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		rangeModel.setValue((int) Math.round(angleDegrees * 10));
 	}
 
-	private static Supplier<Shape[]> petalSupplier = () -> { return makeBezierPetal(basicPaths); };
-	private static Supplier<Shape[]> leafSupplier = () -> { return makeBezierLeaf(basicPaths); };
+	private static Supplier<Shape> petalSupplier = () -> makeBezierPetal(basicPaths).getPath();
+	private static Supplier<Shape> leafSupplier = () -> makeBezierLeaf(basicPaths).getPath();
 
 	private void installToolbar(@NotNull JFrame pFrame) {
 		JToolBar toolBar = new JToolBar(JToolBar.HORIZONTAL);
 		toolBar.setFloatable(false);
 		JButton printButton = new JButton("Print");
 		toolBar.add(printButton);
-		printButton.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				doPrint();
-			}
-		});
+		printButton.addActionListener(e -> doPrint());
 		pFrame.getContentPane().add(toolBar, BorderLayout.PAGE_START);
 	}
 	
@@ -198,12 +191,17 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		
 		return new LinkedList<>(Arrays.asList(rightPath, leftPath));
 	}
-
+	
 	@NotNull
-	private static Shape[] makeBezierPetal(Deque<PNumeric2.BezierPath> basicPaths) {
+	static ClosedShape makeBezierPetal(Deque<PNumeric2.BezierPath> basicPaths) {
 //		QList<PNumeric2.BezierPath> basicShapes = makeBasicPaths();
 		PNumeric2.BezierPath rightPath = basicPaths.getFirst();
 		PNumeric2.BezierPath leftPath = basicPaths.getLast(); // Only 2 shapes in the list anyway
+		return makeBezierPetal(leftPath, rightPath);
+	}
+
+	@NotNull
+	static ClosedShape makeBezierPetal(PNumeric2.BezierPath leftPath, PNumeric2.BezierPath rightPath) {
 
 		TileSegment segmentOne = TileSegment.buildFromPath(rightPath.getForwardPath(), rightPath.getStart(), rightPath.getEnd());
 		TileSegment segmentTwo = TileSegment.buildFromPath(rightPath.reverse().getForwardPath(), rightPath.getEnd(), rightPath.getStart());
@@ -231,14 +229,20 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		System.out.printf("printScale: %s%n", printScale);
 		Shape petalShape = segmentOne.getCurrentShape();
 		printShape("Petal Bezier Points", printScale.createTransformedShape(petalShape));
-		return new Shape[]{petalShape};//, segmentFour.getCurrentShape()};
+		
+		return new ClosedShape(petalShape, segmentOne.getLength()); // All segments are the same length
 	}
 
 	@NotNull
-	private static Shape[] makeBezierLeaf(Deque<PNumeric2.BezierPath> basicPaths) {
+	static ClosedShape makeBezierLeaf(Deque<PNumeric2.BezierPath> basicPaths) {
 //		QList<PNumeric2.BezierPath> basicShapes = makeBasicPaths();
 		PNumeric2.BezierPath rightPath = basicPaths.getFirst();
 		PNumeric2.BezierPath leftPath = basicPaths.getLast(); // Only 2 shapes in the list anyway
+		return makeBezierLeaf(leftPath, rightPath);
+	}
+	
+	@NotNull
+		static ClosedShape makeBezierLeaf(PNumeric2.BezierPath leftPath, PNumeric2.BezierPath rightPath) {
 
 		TileSegment segmentOne = TileSegment.buildFromPath(rightPath.getForwardPath(), rightPath.getStart(), rightPath.getEnd());
 		TileSegment segmentTwo = TileSegment.buildFromPath(leftPath.getForwardPath(), leftPath.getStart(), leftPath.getEnd());
@@ -260,7 +264,8 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		AffineTransform printScale = getPrintScale();
 		Shape leafShape = segmentOne.getCurrentShape();
 		printShape("Leaf Bezier Point", printScale.createTransformedShape(leafShape));
-		return new Shape[]{leafShape};
+		
+		return new ClosedShape(leafShape, segmentOne.getLength()); // All segments are the same length
 	}
 	
 	private static AffineTransform getPrintScale() {
@@ -314,7 +319,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 	}
 
 	@NotNull
-	private Shape[] allShapes = new Shape[2];
+	private Shape allShapes;
 
 	/**
 	 * Create a new PenroseMasters, using the specified shapes, to be drawn at the specified point, on the specified size
@@ -324,7 +329,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 	 * @param yDelta The y-offset, for drawing
 	 * @param isLegalSize true for legal size paper, false otherwise.
 	 */
-	private PenroseMasters(@NotNull final Shape[] shapes, final int xDelta, final int yDelta, final boolean isLegalSize, boolean drawOrigin, Supplier<Shape[]> shapeSource) {
+	private PenroseMasters(@NotNull final Shape shapes, final int xDelta, final int yDelta, final boolean isLegalSize, boolean drawOrigin, Supplier<Shape> shapeSource) {
 		super(new BorderLayout());
 		this.isLegalSize = isLegalSize;
 		
@@ -360,7 +365,8 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 				
 				System.out.printf("Best Angle: %6.3f%n", bestAngle);
 
-				for (Shape pLeftCurve : allShapes) {
+				Shape pLeftCurve = allShapes;
+//				for (Shape pLeftCurve : allShapes) {
 					//					Shape pRightCurve = shapes[ii+1];
 					final Shape leftCurve = scaleTransform.createTransformedShape(pLeftCurve);
 					Rectangle2D bounds2D = leftCurve.getBounds2D();
@@ -388,7 +394,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 //						}
 //						iterator.next();
 //					}
-				}
+//				}
 			}
 
 			public void drawOrigin(final Graphics2D g2) {
@@ -401,6 +407,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 				
 				for (int ii=0; ii<10; ++ii) {
 					int x = 100*ii;
+					//noinspection SuspiciousNameCombination,UnnecessaryLocalVariable
 					int y = x;
 					g2.drawLine(x, originSize, x, -originSize);
 					g2.drawLine(-x, originSize, -x, -originSize);
@@ -424,7 +431,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		addSlider(shapeSource);
 	}
 	
-	private void addSlider(final Supplier<Shape[]> shapeSource) {
+	private void addSlider(final Supplier<Shape> shapeSource) {
 		JSlider slider = new JSlider(rangeModel);
 		JTextField valueField = new JTextField(4);
 		valueField.setEditable(false);
@@ -683,15 +690,33 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 			itr.next();
 		}
 
-		double cross1 = 0;
-		double cross2 = 0;
 		if (ptList.size() == 4) {
 			Iterator<Point2D> ptItr = ptList.iterator();
 			Point2D pt1 = ptItr.next();
 			Point2D pt2 = ptItr.next();
-			cross1 = pt1.distance(ptItr.next());
-			cross2 = pt2.distance(ptItr.next());
+			double segmentLength = pt1.distance(pt2);
+			double cross1 = pt1.distance(ptItr.next());
+			double cross2 = pt2.distance(ptItr.next());
 			System.out.printf("CrossDistances:%n  %15.12f%n  %15.12f%n", cross1, cross2);
+			System.out.printf("Segment: %15.12f%n", segmentLength);
+		}
+	}
+	
+	static class ClosedShape {
+		private final Shape path;
+		private final double segmentLength;
+		
+		private ClosedShape(Shape shape, double length) {
+			path = shape;
+			segmentLength = length;
+		}
+
+		public Shape getPath() {
+			return path;
+		}
+
+		public double getSegmentLength() {
+			return segmentLength;
 		}
 	}
 

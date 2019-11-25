@@ -19,6 +19,7 @@ import org.jetbrains.annotations.Nullable;
  * structures in the {@link java.util.concurrent} package.
  * 
  * TODO: Figure out what methods this could use to aid in functional programming.
+ * TODO: Rewrite to get rid of public constructor. Use Two factory methods, for nullable or never-null objects. 
  * <p>Created by IntelliJ IDEA.
  * <p>Date: 11/21/18
  * <p>Time: 3:10 AM
@@ -28,7 +29,7 @@ import org.jetbrains.annotations.Nullable;
 public final class ObservableReference<T> {
 	private @Nullable T value;
 	
-	private final List<Consumer<@NotNull T>> operations = new LinkedList<>();
+	private final List<Consumer<@NotNull ? super T>> operations = new LinkedList<>();
 
 	/**
 	 * Construct an Observable Reference holding the specified value, which may be null 
@@ -48,7 +49,7 @@ public final class ObservableReference<T> {
 		boolean changed = (object != null) && !object.equals(this.value);
 		this.value = object;
 		if (changed) {
-			for (Consumer<T> operation : operations) {
+			for (Consumer<? super T> operation : operations) {
 				operation.accept(object);
 			}
 		}
@@ -63,7 +64,7 @@ public final class ObservableReference<T> {
 		boolean changed = !Objects.equals(value, object);
 		this.value = object;
 		if (changed) {
-			for (Consumer<T> operation : operations) {
+			for (Consumer<? super T> operation : operations) {
 				operation.accept(object);
 			}
 		}
@@ -89,7 +90,7 @@ public final class ObservableReference<T> {
 	}
 
 	/**
-	 * Returns the object wrapped in a Nullable.
+	 * Returns the object wrapped in an Optional.
 	 * @return An Optional that wraps the contained object.
 	 */
 	public Optional<T> get() { return Optional.ofNullable(value); }
@@ -112,7 +113,7 @@ public final class ObservableReference<T> {
 	 * Add a listener to respond to changes in the object's value
 	 * @param listener The listener.
 	 */
-	public void addListener(Consumer<@NotNull T> listener) {
+	public void addListener(Consumer<@NotNull ? super T> listener) {
 		operations.add(listener);
 	}
 
@@ -121,7 +122,7 @@ public final class ObservableReference<T> {
 	 * @param listener The listener to remove.
 	 * @return true if the listener was found and removed.
 	 */
-	public boolean removeListener(Consumer<@NotNull T> listener) {
+	public boolean removeListener(Consumer<@NotNull ? super T> listener) {
 		return operations.remove(listener);
 	}
 
