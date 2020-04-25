@@ -47,17 +47,17 @@ import org.jetbrains.annotations.NotNull;
  * Be sure to check the correction in the comment above the formula.
  * <p>
  * To rotate the parabola by 30 degrees, we get this formula:<br>
- * (k == sqrt(3)/2, k^2 = 3/4)<br>
+ * (k == sqrt(3)/2, k<sup>2</sup> = 3/4)<br>
  * (M == tan alpha = tan(36 degrees).<br>
- * 3M/4x^2 - KMxy + M/4y^2 -x/2 -Ky = 0<br>
+ * 3M/4x<sup>2</sup> - KMxy + M/4y<sup>2</sup> -x/2 -Ky = 0<br>
  * <p>
  * (Ref: http://www.sinclair.edu/centers/mathlab/pub/findyourcourse/worksheets/Calculus/2ndDegreeEquation.pdf)
  * <p>
- * This becomes M((Kx)^2 - kxy + y^2/4) -x/2 = 0<br>
+ * This becomes M((Kx)<sup>2</sup> - kxy + y<sup>2</sup>/4) -x/2 = 0<br>
  * We need to factor out the polynomial.<br>
  * <p>
- * x = (-b +- sqrt(b^2 - 4ac))/2a<br>
- * (k +- sqrt(k^2 - K))/2K<br>
+ * x = (-b +- sqrt(b<sup>2</sup> - 4ac))/2a<br>
+ * (k ± sqrt(k<sup>2</sup> - K))/2K<br>
  * Define B = sqrt(3 - 2sqrt(3))/2<br>
  * <p>
  * Roots are K+B, K-B<br>
@@ -733,8 +733,8 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
    * Angle BCh: sin(BCh) = Cy-By / BCd <br>
    * </p> <p>
    * Approach 2: Law of cosines: let a, vertex, & b be the lengths of the sides opposite points A, B, & C <br> 
-   * b^2 = a^2 + vertex^2 -2bc cos C <br>
-   * So, cos C = (a^2 + vertex^2 - b^2)/2bc <br>
+   * b<sup>2</sup> = a<sup>2</sup> + vertex<sup>2</sup> -2bc cos C <br>
+   * So, cos C = (a<sup>2</sup> + vertex<sup>2</sup> - b<sup>2</sup>)/2bc <br>
 	 * </p>
 	 * @param a point A
 	 * @param vertex The vertex between VA and VB
