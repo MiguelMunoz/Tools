@@ -101,7 +101,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 	
 	private static Deque<PNumeric2.BezierPath> basicPaths;
 	private static PNumeric2 penroseNumeric;
-	private static BoundedRangeModel rangeModel = new DefaultBoundedRangeModel(0, 0, 0, 150);
+	private static final BoundedRangeModel rangeModel = new DefaultBoundedRangeModel(0, 0, 0, 150);
 
 	/**
 	 * Print master shapes.
@@ -120,7 +120,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 
 		if (args.length > 0) {
 			try {
-				theta = Double.valueOf(args[0]);
+				theta = Double.parseDouble(args[0]);
 			} catch (NumberFormatException e) {
 				System.out.printf("Error reading value `%s`: %s. Using default value of %3.1f%n", args[0], e.getMessage(), theta);
 			}
@@ -170,8 +170,8 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		rangeModel.setValue((int) Math.round(angleDegrees * 10));
 	}
 
-	private static Supplier<Shape> petalSupplier = () -> makeBezierPetal(basicPaths).getPath();
-	private static Supplier<Shape> leafSupplier = () -> makeBezierLeaf(basicPaths).getPath();
+	private static final Supplier<Shape> petalSupplier = () -> makeBezierPetal(basicPaths).getPath();
+	private static final Supplier<Shape> leafSupplier = () -> makeBezierLeaf(basicPaths).getPath();
 
 	private void installToolbar(@NotNull JFrame pFrame) {
 		JToolBar toolBar = new JToolBar(JToolBar.HORIZONTAL);
@@ -702,7 +702,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		}
 	}
 	
-	static class ClosedShape {
+	static final class ClosedShape {
 		private final Shape path;
 		private final double segmentLength;
 		
@@ -718,6 +718,37 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		public double getSegmentLength() {
 			return segmentLength;
 		}
+	}
+
+	/**
+	 * Find the angle in radians between lines ba and bc, where a, vertex, and b are three points.
+	 * <p>
+	 * Notes on Angles
+	 * </p> <p>
+	 * What is the angle at B of two lines BA and BC?
+   * </p> <p>
+   * Approach 1: Get both angles from horizontal, and subtract. <br>
+   * Angles are BAh and BCh <br>
+   * Angle BAh: sin(BAh) = Ay-By / ABd where ABd is the distance from A to B <br>
+   * Angle BCh: sin(BCh) = Cy-By / BCd <br>
+   * </p> <p>
+   * Approach 2: Law of cosines: let a, vertex, & b be the lengths of the sides opposite points A, B, & C <br> 
+   * b^2 = a^2 + vertex^2 -2bc cos C <br>
+   * So, cos C = (a^2 + vertex^2 - b^2)/2bc <br>
+	 * </p>
+	 * @param a point A
+	 * @param vertex The vertex between VA and VB
+	 * @param b point B
+	 * @return The angle in radians between VA and VB
+	 */
+	public static double angle(Point2D.Double a, Point2D.Double vertex, Point2D.Double b) {
+		double bSideSq = vertex.distanceSq(a);
+		double aSideSq = vertex.distanceSq(b);
+		double vSideSq = b.distanceSq(a);
+		double bLen = Math.sqrt(bSideSq);
+		double aLen = Math.sqrt(aSideSq);
+		double cosineBeta = ((aSideSq + bSideSq) - vSideSq) / (2 * bLen * aLen);
+		return StrictMath.acos(cosineBeta);
 	}
 
 	// This was clever, but ultimately unnecessary. There's a way to do this totally with Deque
