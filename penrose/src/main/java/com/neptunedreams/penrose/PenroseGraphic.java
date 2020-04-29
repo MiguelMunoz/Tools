@@ -20,6 +20,7 @@ import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
 import java.net.URL;
+import java.util.Arrays;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
@@ -51,6 +52,8 @@ public class PenroseGraphic extends JPanel {
   private static final int SLIDER_SCALE = 100;
   private PenroseCanvas dualCanvas;
   private final JLabel thetaLabel = new JLabel("");
+  private final JLabel leftLabel = new JLabel(String.format("%6.3f", 0.0));
+  private final JLabel rightLabel = new JLabel(String.format("%6.3f", 0.0));
 
   public static void main(String[] args) {
     JFrame frame = new JFrame("Penrose Graphic");
@@ -86,7 +89,11 @@ public class PenroseGraphic extends JPanel {
     panel.add(dualCanvas, BorderLayout.CENTER);
 
     JSlider slider = new JSlider(HORIZONTAL, 0, SLIDER_MAX, (int) INITIAL_THETA* SLIDER_SCALE);
-    panel.add(packNS(slider, thetaLabel), BorderLayout.PAGE_END);
+    
+    installLeftAngleText();
+    installRightAngleText();
+    JPanel textLine = packECW(leftLabel, thetaLabel, rightLabel);
+    panel.add(packNS(slider, textLine), BorderLayout.PAGE_END);
     slider.addChangeListener(this::doTheta);
 
     return panel;
@@ -103,6 +110,69 @@ public class PenroseGraphic extends JPanel {
     Shape petalShape = PenroseMasters.makeBezierPetal(leftPath, rightPath).getPath();
     dualCanvas.setShapes(leafShape, petalShape);
     setThetaLabel(theta);
+    installLeftAngleText();
+    installRightAngleText();
+
+  }
+
+  private void installRightAngleText() {
+    double rightAngle = getRightAngle();
+    rightLabel.setText(String.format("%6.3f", rightAngle));
+  }
+
+  private void installLeftAngleText() {
+    double leftAngle = getLeftAngle();
+    leftLabel.setText(String.format ("%6.3f", leftAngle));
+  }
+
+  private double getLeftAngle() {
+    PathIterator iterator = dualCanvas.leafShape.getPathIterator(null);
+    iterator.next();
+    Point2D control = new Point2D.Double();
+    Point2D end = new Point2D.Double();
+    getControlPoint(iterator, control, end); // skip first point
+    getControlPoint(iterator, control, end); // skip second point
+    getControlPoint(iterator, control, end);
+    Point2D.Double a = copyOf(control);
+    Point2D.Double vertex = copyOf(end);
+    getControlPoint(iterator, control, end);
+    Point2D.Double b = copyOf(control);
+    return Math.toDegrees(PenroseMasters.angle(a, vertex, b));
+  }
+  
+  private double getRightAngle() {
+    PathIterator iterator = dualCanvas.leafShape.getPathIterator(null);
+    iterator.next();
+    Point2D control = new Point2D.Double();
+    Point2D end = new Point2D.Double();
+    getControlPoint(iterator, control, end);
+    Point2D.Double a = copyOf(control);
+    Point2D.Double vertex = copyOf(end);
+    getControlPoint(iterator, control, end);
+    Point2D.Double b = copyOf(control);
+    return Math.toDegrees(PenroseMasters.angle(a, vertex, b));
+  }
+  
+  Point2D.Double copyOf(Point2D point) {
+    Point2D.Double copy = new Point2D.Double();
+    copy.setLocation(point);
+    return copy;
+  }
+  
+  private void getControlPoint(PathIterator iterator, Point2D control, Point2D end) {
+    double[] results = new double[4];
+    int type = 0;
+    while (type != PathIterator.SEG_QUADTO) {
+      type = iterator.currentSegment(results);
+      iterator.next();
+    }
+    assert type == PathIterator.SEG_QUADTO;
+    control.setLocation(toPoint(results));
+    end.setLocation(toPoint(Arrays.copyOfRange(results, 2, 4)));
+  }
+  
+  private Point2D toPoint(double[] points) {
+    return new Point2D.Double(points[0], points[1]);
   }
   
   private void setThetaLabel(double theta) {
@@ -223,16 +293,12 @@ public class PenroseGraphic extends JPanel {
 
       g2.setTransform(savedTransform);
 
-      g2.setStroke(new BasicStroke(1.0f));
-      g2.setColor(bColor);
-      g2.drawRect(0, 0, getWidth()-1, getHeight()-1);
-
       g.drawImage(image, 0, 0, null);
     }
 
     public double segmentLength() {
       Path2D.Double leafPath = (Path2D.Double) leafShape;
-      PathIterator leafIterator = leafPath.getPathIterator(AffineTransform.getScaleInstance(1.0, 1.0));
+      PathIterator leafIterator = leafPath.getPathIterator(null);
       double[] empty = new double[6];
       int opType = leafIterator.currentSegment(empty);
       assert opType == PathIterator.SEG_MOVETO;
@@ -249,6 +315,14 @@ public class PenroseGraphic extends JPanel {
     JPanel panel = new JPanel(new BorderLayout());
     panel.add(north, BorderLayout.PAGE_START);
     panel.add(south, BorderLayout.PAGE_END);
+    return panel;
+  }
+  
+  private static JPanel packECW(JComponent westComponent, JComponent centerComponent, JComponent eastComponent) {
+    JPanel panel = new JPanel(new BorderLayout());
+    panel.add(eastComponent, BorderLayout.LINE_END);
+    panel.add(centerComponent, BorderLayout.CENTER);
+    panel.add(westComponent, BorderLayout.LINE_START);
     return panel;
   }
 }
