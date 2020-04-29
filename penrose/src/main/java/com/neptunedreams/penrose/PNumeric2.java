@@ -60,7 +60,7 @@ import org.jetbrains.annotations.NotNull;
  *
  * @author Miguel Mu\u00f1oz
  */
-@SuppressWarnings({"HardCodedStringLiteral", "MagicNumber", "AccessingNonPublicFieldOfAnotherObject", "MagicCharacter", "StringConcatenation", "UseOfSystemOutOrSystemErr", "FieldCanBeLocal"})
+@SuppressWarnings({"HardCodedStringLiteral", "MagicNumber", "FieldCanBeLocal"})
 @ParametersAreNonnullByDefault
 class PNumeric2 {
 	// Alpha is really an arbitrary number, which determines the size of the parabola. I settled on this value because
@@ -83,7 +83,6 @@ class PNumeric2 {
 
 	@NotNull
 	private Point2D getPPrime(double x, AffineTransform transform) {
-		//noinspection UseOfSystemOutOrSystemErr
 		assert !Double.isNaN(x);
 		Point2D pt = getPoint(x);
 		transform.transform(pt, pt);
@@ -244,7 +243,7 @@ class PNumeric2 {
 	private final double xStart;
 	private final double xMid;
 	private final double xEnd;
-	private final double length;
+//	private final double length;
 	@NotNull
 	private final Point2D midPoint;
 
@@ -303,7 +302,7 @@ class PNumeric2 {
 		xStart = x1;
 		xEnd = x2;
 		xMid = reverseX((xp1 + xp2)/2.0, 0.0, rawTransform);
-		length = 0;
+//		length = 0;
 	}
 
 //	@NotNull
@@ -413,7 +412,8 @@ class PNumeric2 {
 		private final double length;
 
 		/**
-		 * Generate control points for a bezier parabola segment from x1 to x2, with formula y = AX<sup>2</sup> + Bx + C.
+		 * Generate Bezier end points and a control point for a bezier parabola segment from x1 to x2, with formula:
+		 * <pre>    y = AX<sup>2</sup> + Bx + C</pre>
 		 *
 		 * @param x1 Starting x of segment
 		 * @param x2 Ending x of segment
@@ -520,6 +520,9 @@ class PNumeric2 {
 
 		@NotNull
 		Point2D getEnd() { return end; }
+		
+		@NotNull
+		Point2D getCtl() { return ctl; }
 
 		@NotNull
 		BezierPath reverse() {

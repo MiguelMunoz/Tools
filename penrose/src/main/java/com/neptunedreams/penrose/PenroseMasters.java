@@ -66,12 +66,13 @@ import org.jetbrains.annotations.NotNull;
  * <p>You can do this in two steps, first convert the parabola segment to a quadratic Bezier curve (with a single 
  * control point), then convert it to a cubic Bezier curve (with two control points).
  * <p>Let f(x)=Ax<sup>2</sup>+Bx+C be the parabola and let x<sub>1</sub> and x<sub>2</sub> be the edges of the segment on 
- * which the parabola is defined.
+ * which the parabola is defined.</p>
+ * <p>The derivative is f\u2032(x)=2Ax+B</p>
  * <p>
  * Then P<sub>1</sub>=(x<sub>1</sub>,f(x<sub>1</sub>)) and P<sub>2</sub>=(x<sub>2</sub>,f(x<sub>2</sub>)) 
  * are the Bezier curve start and end points, and 
  * <br>
- *   C=((x<sub>1</sub>+x<sub>2</sub>)/2, (f(x<sub>1</sub>)+f'(x<sub>1</sub>)(x<sub>1</sub>+x<sub>2</sub>)/2)) is the 
+ *   C=((x<sub>1</sub>+x<sub>2</sub>)/2, (f(x<sub>1</sub>)+f\u2032(x<sub>1</sub>)(x<sub>1</sub>+x<sub>2</sub>)/2)) is the 
  * control point for the quadratic Bezier curve.
  * 
  * <pre> <!-- Meant to be seen in JavaDocs. Don't mess with the spacing.) -->
@@ -129,14 +130,14 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 				drawOrigin = false;
 			}
 		}
-		System.out.printf("Rotation of %3.1f degrees%n", theta);
+//		System.out.printf("Rotation of %3.1f degrees%n", theta);
 		makeDataFromAngle(theta);
 
-		System.out.println("Petal:");
+//		System.out.println("Petal:");
 		final ClosedShape petalShape = makeBezierPetal(basicPaths);
 		Shape petalShapes = petalShape.getPath();
 		JFrame frame = new JFrame(String.format("Penrose Petal: %3.1f degrees", theta));
-		PenroseMasters pm = new PenroseMasters(petalShapes, 150, 0, false, drawOrigin, petalSupplier);
+		PenroseMasters pm = new PenroseMasters(petalShapes, 150, 0, false, drawOrigin, false, petalSupplier);
 		frame.add(pm);
 		frame.pack();
 		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -147,12 +148,12 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		assert petalShapes != null;
 		printDataPoints(petalShapes);
 
-		System.out.println("\nLeaf:");
+//		System.out.println("\nLeaf:");
 
 		final ClosedShape leafShape = makeBezierLeaf(basicPaths);
 		Shape leafShapes = leafShape.getPath();
 		frame = new JFrame(String.format("Penrose Leaf: %3.1f degrees", theta));
-		pm = new PenroseMasters(leafShapes, 200, 120, true, drawOrigin, leafSupplier);
+		pm = new PenroseMasters(leafShapes, 200, 120, true, drawOrigin, false, leafSupplier);
 		frame.add(pm);
 		frame.pack();
 		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -207,10 +208,10 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		TileSegment segmentTwo = TileSegment.buildFromPath(rightPath.reverse().getForwardPath(), rightPath.getEnd(), rightPath.getStart());
 		TileSegment segmentThree = TileSegment.buildFromPath(leftPath.getForwardPath(), leftPath.getStart(), leftPath.getEnd());
 		TileSegment segmentFour = TileSegment.buildFromPath(leftPath.reverse().getForwardPath(), leftPath.getEnd(), leftPath.getStart());
-		segmentOne.printCurrentShape("one");
-		segmentTwo.printCurrentShape("two");
-		segmentThree.printCurrentShape("three");
-		segmentFour.printCurrentShape("four");
+//		segmentOne.printCurrentShape("one");
+//		segmentTwo.printCurrentShape("two");
+//		segmentThree.printCurrentShape("three");
+//		segmentFour.printCurrentShape("four");
 
 		segmentOne.rotateDegrees(36 - 90);
 		Point2D p1 = getEndPoint(segmentOne);
@@ -224,11 +225,11 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		Point2D p4 = getEndPoint(segmentOne);
 		double width = p1.distance(p3);
 		double length = p4.distance(p2);
-		System.out.printf("%n%nPetal dimensions: %15.12f x %15.12f%n", width * PRINT_SCALE, length * PRINT_SCALE);
+//		System.out.printf("%n%nPetal dimensions: %15.12f x %15.12f%n", width * PRINT_SCALE, length * PRINT_SCALE);
 		AffineTransform printScale = getPrintScale();
-		System.out.printf("printScale: %s%n", printScale);
+//		System.out.printf("printScale: %s%n", printScale);
 		Shape petalShape = segmentOne.getCurrentShape();
-		printShape("Petal Bezier Points", printScale.createTransformedShape(petalShape));
+//		printShape("Petal Bezier Points", printScale.createTransformedShape(petalShape));
 		
 		return new ClosedShape(petalShape, segmentOne.getLength()); // All segments are the same length
 	}
@@ -260,10 +261,10 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		Point2D p4 = getEndPoint(segmentOne);
 		double width = p1.distance(p3);
 		double length = p4.distance(p2);
-		System.out.printf("%n%nLeaf dimensions: %15.12f x %15.12f%n", width*PRINT_SCALE, length*PRINT_SCALE);
+//		System.out.printf("%n%nLeaf dimensions: %15.12f x %15.12f%n", width*PRINT_SCALE, length*PRINT_SCALE);
 		AffineTransform printScale = getPrintScale();
 		Shape leafShape = segmentOne.getCurrentShape();
-		printShape("Leaf Bezier Point", printScale.createTransformedShape(leafShape));
+//		printShape("Leaf Bezier Point", printScale.createTransformedShape(leafShape));
 		
 		return new ClosedShape(leafShape, segmentOne.getLength()); // All segments are the same length
 	}
@@ -277,14 +278,35 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		return segment.getEndPoint();
 	}
 
-	private static void printDataPoints(Shape shape) {
-		String format = "(%15.12f, %15.12f)%n";
-		System.out.printf(format, 0.0, 0.0);
+	public static void printDataPoints(Shape shape) {
+		String pairFormat = "(%15.12f, %15.12f)";
+		String onePair = "%11s:" + pairFormat + "%n";
+		//noinspection MagicCharacter
+		final char SPACE = ' ';
+		String twoPair = "%11s:" + pairFormat + SPACE + pairFormat + "%n";
+		String threePair = "%11s:" + pairFormat + SPACE + pairFormat + SPACE + pairFormat + "%n";
+		System.out.printf(onePair, "Xxx", 0.0, 0.0);
 		double[] data = new double[6];
 		for (PathIterator iterator = shape.getPathIterator(null); !iterator.isDone(); iterator.next()) {
 			int type = iterator.currentSegment(data);
-			if (type == PathIterator.SEG_LINETO) {
-				System.out.printf(format, data[0], data[1]);
+			switch (type) {
+				case PathIterator.SEG_CLOSE:
+					System.out.printf("SEG_CLOSE:%n");
+					break;
+				case PathIterator.SEG_CUBICTO:
+					System.out.printf(threePair, "SEG_CUBICTO", data[0], data[1], data[2], data[3], data[4], data[5]);
+					break;
+				case PathIterator.SEG_LINETO:
+					System.out.printf(onePair, "SEG_LINETO", data[0], data[1]);
+					break;
+				case PathIterator.SEG_MOVETO:
+					System.out.printf(onePair, "SEG_MOVETO", data[0], data[1]);
+					break;
+				case PathIterator.SEG_QUADTO:
+					System.out.printf(twoPair, "SEG_QUADTO", data[0], data[1], data[2], data[3]);
+					break;
+				default:
+					throw new IllegalStateException("Unknown PathIterator Type: " + type);
 			}
 		}
 	}
@@ -329,7 +351,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 	 * @param yDelta The y-offset, for drawing
 	 * @param isLegalSize true for legal size paper, false otherwise.
 	 */
-	private PenroseMasters(@NotNull final Shape shapes, final int xDelta, final int yDelta, final boolean isLegalSize, boolean drawOrigin, Supplier<Shape> shapeSource) {
+	private PenroseMasters(@NotNull final Shape shapes, final int xDelta, final int yDelta, final boolean isLegalSize, boolean drawOrigin, boolean isForPrinting, Supplier<Shape> shapeSource) {
 		super(new BorderLayout());
 		this.isLegalSize = isLegalSize;
 		
@@ -344,9 +366,9 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 				g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 
 				Dimension size = new Dimension((105*72)/10, 8*72); // Size is 10.5 by 8 inches, measured in points.
-				int scale = 6*72; // 6 inches, in points. This is apparently half the width of a petal.
+				int scale = 6*72; // 6 inches, in points. This is half the length of a petal.
 				g.translate((size.width / 2) + xDelta, (size.height / 20) + yDelta);
-				System.out.println("Scale: " + scale);
+//				System.out.println("Scale: " + scale);
 				AffineTransform scaleTransform = AffineTransform.getScaleInstance(scale, scale);
 
 				Stroke stroke = new BasicStroke((0.0720f)); // one mill thick.
@@ -354,7 +376,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 				if (drawOrigin) {
 					drawOrigin(g2);
 				}
-				g2.setColor(Color.black);
+				g2.setColor(Color.blue);
 
 				double bestAngle;
 //				if (isLegalSize) {
@@ -363,7 +385,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 //					bestAngle = 36.0;
 //				}
 				
-				System.out.printf("Best Angle: %6.3f%n", bestAngle);
+//				System.out.printf("Best Angle: %6.3f%n", bestAngle);
 
 				Shape pLeftCurve = allShapes;
 //				for (Shape pLeftCurve : allShapes) {
@@ -379,8 +401,12 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 					Shape rotatedShape = transform.createTransformedShape(leftCurve);
 					Rectangle2D finalBounds = rotatedShape.getBounds2D();
 					System.out.printf("Size: %6.4f x %6.4f%n", finalBounds.getWidth(), finalBounds.getHeight());
-
-					g2.draw(rotatedShape);
+					
+					if (isForPrinting) {
+						g2.draw(rotatedShape);
+					} else {
+						g2.fill(rotatedShape);
+					}
 
 //					// printing only:
 //					Path2D leftPath = (Path2D) leftCurve;
@@ -428,7 +454,10 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 
 		add(mCanvas, BorderLayout.CENTER);
 		
-		addSlider(shapeSource);
+		if (!isForPrinting) {
+			addSlider(shapeSource);
+			
+		}
 	}
 	
 	private void addSlider(final Supplier<Shape> shapeSource) {
@@ -585,7 +614,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		public TileSegment reverse() {
 			AffineTransform flip = AffineTransform.getRotateInstance(Math.PI);
 			Point2D delta = getVector();
-			System.out.printf("Flipping vector: (%7.4f, %7.4f)%n", delta.getX(), delta.getY());
+//			System.out.printf("Flipping vector: (%7.4f, %7.4f)%n", delta.getX(), delta.getY());
 			flip.translate(-delta.getX(), -delta.getY());
 			Shape flippedCopy = flip.createTransformedShape(shape);
 			Deque<Point2D> points = getCurrentPoints(flippedCopy);
@@ -645,7 +674,7 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 		 * TODO: Rewrite the join code to not use points. It should only use Path Iterators.
 		 */
 		protected void join(TileSegment newSegment) { // needs override for bezier
-			((Path2D)shape).append(newSegment.getCurrentShape(), false);
+			((Path2D)shape).append(newSegment.getCurrentShape(), true);
 			
 			// Calculate a new length
 			Deque<Point2D> currentPoints = TileSegment.getCurrentPoints(getCurrentShape());
@@ -654,13 +683,14 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 			length = first.distance(last);
 		}
 		
-		public void rotateAndJoin(double angle, TileSegment newSegment) {
+		public TileSegment rotateAndJoin(double angle, TileSegment newSegment) {
 			newSegment.rotateDegrees(angle);
 			AffineTransform transform = new AffineTransform();
 			Point2D vector = getVector();
 			transform.translate(vector.getX(), vector.getY());
 			newSegment.transform(transform);
 			join(newSegment);
+			return newSegment;
 		}
 	}
 
@@ -680,6 +710,9 @@ public final class PenroseMasters extends JPanel implements Pageable, Printable 
 					String txt = (type == PathIterator.SEG_LINETO) ? "lin" : "mov";
 					System.out.printf("%s: (%15.12f, %15.12f, 0.0)%n", txt, ps[0], ps[1]);
 					ptList.add(new Point2D.Double(ps[0], ps[1]));
+					break;
+				case PathIterator.SEG_CUBICTO: // not actually used here, but this may be useful elsewhere
+					System.out.printf("cub: (%15.12f %15.12f) ((%15.12f, %15.12f) %n", ps[0], ps[1], ps[2], ps[3]);
 					break;
 				case PathIterator.SEG_CLOSE:
 					System.out.println("close");

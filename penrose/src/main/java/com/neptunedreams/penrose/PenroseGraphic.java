@@ -8,28 +8,26 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.GridLayout;
 import java.awt.Image;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Shape;
-import java.awt.Stroke;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
-import java.awt.event.ComponentListener;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Path2D;
+import java.awt.geom.PathIterator;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
 import java.net.URL;
-import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JSlider;
 import javax.swing.WindowConstants;
-import javax.swing.border.Border;
+import javax.swing.event.ChangeEvent;
 
 import static javax.swing.SwingConstants.*;
 
@@ -44,13 +42,22 @@ import static javax.swing.SwingConstants.*;
  */
 @SuppressWarnings({"HardCodedStringLiteral", "UseOfSystemOutOrSystemErr"})
 public class PenroseGraphic extends JPanel {
+  
+  private static final double MARGIN_FACTOR = 1.1;
+  private static final int initialWidth = 400;
+  private static final int initialHeight = 2 * initialWidth;
+  private static final double INITIAL_THETA = 5.0;
+  private static final int SLIDER_MAX = 1300;
+  private static final int SLIDER_SCALE = 100;
+  private PenroseCanvas dualCanvas;
+  private final JLabel thetaLabel = new JLabel("");
+
   public static void main(String[] args) {
     JFrame frame = new JFrame("Penrose Graphic");
     frame.setLocationByPlatform(true);
     frame.add(new PenroseGraphic());
     frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-//    frame.pack();
-    frame.setSize(200, 400);
+    frame.pack();
     frame.setVisible(true);
   }
   
@@ -61,27 +68,45 @@ public class PenroseGraphic extends JPanel {
   }
   
   private JComponent makePieces() {
-    PNumeric2 pNumeric2 = new PNumeric2(5.0);
+    PNumeric2 pNumeric2 = new PNumeric2(INITIAL_THETA);
     final PNumeric2.BezierPath leftPath = pNumeric2.makeLeftPath();
     final PNumeric2.BezierPath rightPath = pNumeric2.makeRightPath();
     PenroseMasters.ClosedShape leaf = PenroseMasters.makeBezierLeaf(leftPath, rightPath);
     PenroseMasters.ClosedShape petal = PenroseMasters.makeBezierPetal(leftPath, rightPath);
-    final double leafSize = leaf.getPath().getBounds2D().getWidth();
-    AffineTransform identity = AffineTransform.getRotateInstance(0.0);
-    final Shape paths = leaf.getPath();
-//    Point2D leafStart = paths.getPathIterator(identity)
-//    final double leafWidth = paths.getPathIterator(identity)
-    
-    Component leafCanvas = new PenroseCanvas(leaf.getPath(), leafSize, Color.blue);
-    Component petalCanvas = new PenroseCanvas(petal.getPath(), leafSize, Color.ORANGE);
+    Rectangle2D leafBounds = leaf.getPath().getBounds2D();
+    final double canvasWidth = leafBounds.getWidth() * MARGIN_FACTOR;
+    dualCanvas = new PenroseCanvas(petal.getPath(), leaf.getPath(), canvasWidth, Color.blue);
+
+    thetaLabel.setHorizontalAlignment(CENTER);
+    setThetaLabel(INITIAL_THETA);
 
     JPanel panel = new JPanel();
-    final BoxLayout layout = new BoxLayout(panel, BoxLayout.PAGE_AXIS);
-    panel.setLayout(layout);
-    panel.setMinimumSize(new Dimension(200, 400));
-    panel.add(leafCanvas, BorderLayout.PAGE_START);
-    panel.add(petalCanvas, BorderLayout.CENTER);
+    panel.setLayout(new BorderLayout());
+    panel.setMinimumSize(new Dimension(initialWidth, initialHeight));
+    panel.add(dualCanvas, BorderLayout.CENTER);
+
+    JSlider slider = new JSlider(HORIZONTAL, 0, SLIDER_MAX, (int) INITIAL_THETA* SLIDER_SCALE);
+    panel.add(packNS(slider, thetaLabel), BorderLayout.PAGE_END);
+    slider.addChangeListener(this::doTheta);
+
     return panel;
+  }
+  
+  private void doTheta(ChangeEvent e) {
+    JSlider slider = (JSlider) e.getSource();
+    int value = slider.getValue();
+    double theta = value/ (double) SLIDER_SCALE;
+    PNumeric2 pNumeric2 = new PNumeric2(theta);
+    final PNumeric2.BezierPath leftPath = pNumeric2.makeLeftPath();
+    final PNumeric2.BezierPath rightPath = pNumeric2.makeRightPath();
+    Shape leafShape = PenroseMasters.makeBezierLeaf(leftPath, rightPath).getPath();
+    Shape petalShape = PenroseMasters.makeBezierPetal(leftPath, rightPath).getPath();
+    dualCanvas.setShapes(leafShape, petalShape);
+    setThetaLabel(theta);
+  }
+  
+  private void setThetaLabel(double theta) {
+    thetaLabel.setText(String.format("Theta = %5.2f", theta));
   }
   
   private JComponent makeFlowers() {
@@ -107,90 +132,123 @@ public class PenroseGraphic extends JPanel {
     return jLabel;
   }
   
-  @SuppressWarnings({"MagicNumber", "HardcodedFileSeparator"})
-  private class PenroseCanvas extends JPanel {
-    private final Shape shape;
-    private final double masterWidth;
-    private final Color bColor;
+  private static class PenroseCanvas extends Canvas {
+    private static final double sizeRatio = 0.95;
+    private static final double marginRatio = (1.0 - sizeRatio)/2.0;
 
-    PenroseCanvas(Shape shape, double masterWidth, Color bColor) {
+    private final Color bColor;
+    private Shape petalShape;
+    private Shape leafShape;
+    private final double masterWidth;
+    private final double aspectRatio;
+    private final double initialSegmentLength;
+
+    PenroseCanvas(Shape petalShape, Shape leafShape, double masterWidth, Color bColor) {
       super();
       this.masterWidth = masterWidth;
-      this.shape = shape;
+      this.petalShape = petalShape;
+      this.leafShape = leafShape;
       this.bColor = bColor;
-//      setMinimumSize(new Dimension(200, 200));
-//      setSize(new Dimension(200, 200));
+      initialSegmentLength = segmentLength();
       
-//      ComponentListener cl = new ComponentAdapter() {
-//        @Override
-//        public void componentResized(final ComponentEvent e) {
-//          Thread.dumpStack();
-//        }
-//      };
-//      addComponentListener(cl);
-      setBorder(BorderFactory.createMatteBorder(10, 10, 10,10, Color.red));
-//      setPreferredSize(new Dimension(500, adjustHeightFromWidth(500, 500)));
+      @SuppressWarnings("MagicNumber")
+      double tempSize = 1000.0;
+      AffineTransform scaledTransform = AffineTransform.getScaleInstance(tempSize, tempSize);
+      Shape tempPetalShape = scaledTransform.createTransformedShape(petalShape);
+      Shape tempLeafShape = scaledTransform.createTransformedShape(leafShape);
+
+      Rectangle leafBounds = tempLeafShape.getBounds();
+      Rectangle petalBounds = tempPetalShape.getBounds();
+      double margin = leafBounds.getWidth() * marginRatio;
+      aspectRatio = (leafBounds.getHeight() + petalBounds.getHeight() + (5 * margin)) / (leafBounds.getWidth() + (2 * margin));
+      double masterHeight = aspectRatio*masterWidth;
+      System.out.printf("Setting initial size to %s from %3.2f, %3.2f%n", getSize(), masterWidth, masterHeight);
+      setSize(initialWidth, (int) (initialWidth*aspectRatio));
+      setBackground(Color.WHITE);
+    }
+
+    private void setShapes(Shape leafShape, Shape petalShape) {
+      this.leafShape = leafShape;
+      this.petalShape = petalShape;
+      repaint();
     }
 
     @Override
-    public void setBorder(final Border border) {
-      System.out.printf("setBorder(%s)%n", border);
-      super.setBorder(border);
+    public void update(final Graphics g) {
+      paint(g); // don't clear the rectangle. This prevents screen flicker.
     }
 
     @Override
-    public void setBounds(final int x, final int y, final int width, final int height) {
-      final Rectangle2D bounds2D = shape.getBounds2D();
-      double bWidth = bounds2D.getWidth();
-      double bHeight = bounds2D.getHeight();
-
-      float newHeight = (float) ((width * bHeight) / bWidth) * 1.1f;
-      final int roundedHeight = Math.round(newHeight + 0.5f);
-      super.setBounds(x, y, width, roundedHeight); // round up.
-      System.out.printf("Adjusting size from (%d, %d) to (%d, %d)%n", width , height, width, roundedHeight);
+    public Dimension getPreferredSize() {
+      Dimension prefSize = super.getPreferredSize();
+      int width = Math.max(prefSize.width, initialWidth);
+      return new Dimension(width, (int) (width * aspectRatio));
     }
 
-//    public int adjustHeightFromWidth(final int width, final double bWidth, final double bHeight) {
-//      float newHeight = (float)((width * bHeight) / bWidth) * 1.1f;
-//      return Math.round(newHeight + 0.5f);
-//    }
+    @Override
+    public Dimension getSize() {
+      return getPreferredSize();
+    }
 
     @Override
     public void paint(final Graphics g) {
-      Graphics2D g2 = (Graphics2D) g;
+      Image image = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_RGB);
+      Graphics2D g2 = (Graphics2D) image.getGraphics();
+      
+//      createBufferStrategy(2);
+      g2.setBackground(getBackground());
+      g2.fillRect(0, 0, getWidth(), getHeight());
+
       g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
       double width = getWidth();
-      double scale = (width - 5.0) /masterWidth;
-//      System.out.printf("scale %8.2f = %8.2f / %8.2f from bounds %s%n", scale, width, masterWidth, shape.getBounds2D());
-      AffineTransform scaleTransform = AffineTransform.getScaleInstance(scale, scale);
-      Shape scaledShape = scaleTransform.createTransformedShape(shape);
+      double scale = (width * sizeRatio) /masterWidth;
+      double segmentLength = segmentLength();
+//      System.out.printf("s Length: %6.2f%n", segmentLength);
+      scale = (scale * initialSegmentLength) / segmentLength;
+      double margin = marginRatio * width;
       AffineTransform savedTransform = g2.getTransform();
-//      g2.transform(scaleTransform);
-      
-      Stroke lineStroke = new BasicStroke(3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
-      g2.setColor(Color.black);
-      
-      double halfWidth = getWidth()/2.0;
-//      double halfHeight = getHeight()/2.0;
-      g2.translate(halfWidth, getHeight()/10.0);
-      
-//      double tScale = 0.05;
-//      g2.transform(AffineTransform.getScaleInstance(tScale, tScale));
-      g2.setStroke(lineStroke);
-      g2.draw(scaledShape);
-      
+      AffineTransform scaleTransform = AffineTransform.getScaleInstance(scale, scale);
+      Shape scaledLeaf = scaleTransform.createTransformedShape(leafShape);
+      g2.setColor(Color.blue);
+
+      final double TWO = 2.0;
+      double halfWidth = width/ TWO;
+      g2.translate(halfWidth, TWO *margin);
+      g2.fill(scaledLeaf);
+      double gap = (scale / initialSegmentLength) * segmentLength;
+      g2.translate(0.0, gap);
+
+      Shape scaledPetal = scaleTransform.createTransformedShape(petalShape);
+      g2.fill(scaledPetal);
+
       g2.setTransform(savedTransform);
-      
+
       g2.setStroke(new BasicStroke(1.0f));
       g2.setColor(bColor);
       g2.drawRect(0, 0, getWidth()-1, getHeight()-1);
+
+      g.drawImage(image, 0, 0, null);
     }
 
-//    @Override
-//    public int getWidth() {
-//      // TODO: Write PenroseCanvas.getWidth()
-//      return super.getWidth();
-//      throw new AssertionError("PenroseCanvas.getWidth() is not yet implemented");
-//    }
+    public double segmentLength() {
+      Path2D.Double leafPath = (Path2D.Double) leafShape;
+      PathIterator leafIterator = leafPath.getPathIterator(AffineTransform.getScaleInstance(1.0, 1.0));
+      double[] empty = new double[6];
+      int opType = leafIterator.currentSegment(empty);
+      assert opType == PathIterator.SEG_MOVETO;
+      Point2D start = new Point2D.Double(empty[0], empty[1]);
+      leafIterator.next();
+      double[] empty2 = new double[6];
+      leafIterator.currentSegment(empty2);
+      Point2D end = new Point2D.Double(empty2[2], empty2[3]);
+      return start.distance(end);
+    }
+  }
+
+  private static JPanel packNS(JComponent north, JComponent south) {
+    JPanel panel = new JPanel(new BorderLayout());
+    panel.add(north, BorderLayout.PAGE_START);
+    panel.add(south, BorderLayout.PAGE_END);
+    return panel;
   }
 }
